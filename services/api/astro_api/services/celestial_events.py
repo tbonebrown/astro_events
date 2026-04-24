@@ -685,7 +685,7 @@ class CelestialEventsService:
                     "azimuth_deg": assessment_payload.get("azimuth_deg"),
                     "direction": assessment_payload.get("direction"),
                 }
-                best_time = cached_visibility.best_viewing_time
+                best_time = ensure_utc(cached_visibility.best_viewing_time)
             else:
                 best_time = best_viewing_time(
                     peak_time,
