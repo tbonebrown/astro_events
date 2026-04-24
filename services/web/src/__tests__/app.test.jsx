@@ -175,6 +175,88 @@ beforeEach(() => {
               source: "fallback"
             };
           }
+          if (String(path).includes("/api/events/personalized")) {
+            return {
+              requested_location: {
+                latitude: 41.8781,
+                longitude: -87.6298,
+                timezone: "America/Chicago"
+              },
+              generated_at: "2026-04-23T00:00:00Z",
+              tonight_summary: {
+                headline: "Eta Aquariids meteor shower",
+                summary: "Fast meteors are starting to build before dawn.",
+                count: 2
+              },
+              events: [
+                {
+                  event_id: "meteor-eta-aquariids-2026",
+                  title: "Eta Aquariids meteor shower",
+                  type: "meteor_shower",
+                  start_time: "2026-04-23T00:00:00Z",
+                  end_time: "2026-05-06T00:00:00Z",
+                  peak_time: "2026-05-05T09:00:00Z",
+                  best_viewing_time: "2026-05-05T09:00:00Z",
+                  visibility_score: 0.88,
+                  visibility_label: "Great",
+                  magnitude: 2.5,
+                  brightness_score: 0.72,
+                  description: "Synthetic shower description.",
+                  region_applicability: { lat_min: -65, lat_max: 45, lon_min: -180, lon_max: 180 },
+                  rarity_score: 0.74,
+                  importance_score: 0.81,
+                  sky_position: {
+                    azimuth_deg: 120,
+                    altitude_deg: 38,
+                    direction: "southeast"
+                  },
+                  observation_method: "naked eye",
+                  duration_minutes: 120,
+                  thumbnail: { badge: "Meteor Shower" },
+                  summary: "Fast meteors are starting to build before dawn.",
+                  why_interesting: "A strong annual shower."
+                }
+              ]
+            };
+          }
+          if (String(path).includes("/api/events/") && String(path).includes("/explain")) {
+            return {
+              event_id: "meteor-eta-aquariids-2026",
+              summary: "Fast meteors are starting to build before dawn.",
+              why_interesting: "A strong annual shower.",
+              explanation: "This shower comes from Halley's debris stream.",
+              source: "fallback"
+            };
+          }
+          if (String(path).includes("/api/events/")) {
+            return {
+              event_id: "meteor-eta-aquariids-2026",
+              title: "Eta Aquariids meteor shower",
+              type: "meteor_shower",
+              start_time: "2026-04-23T00:00:00Z",
+              end_time: "2026-05-06T00:00:00Z",
+              peak_time: "2026-05-05T09:00:00Z",
+              best_viewing_time: "2026-05-05T09:00:00Z",
+              visibility_score: 0.88,
+              visibility_label: "Great",
+              magnitude: 2.5,
+              brightness_score: 0.72,
+              description: "Synthetic shower description.",
+              region_applicability: { lat_min: -65, lat_max: 45, lon_min: -180, lon_max: 180 },
+              rarity_score: 0.74,
+              importance_score: 0.81,
+              sky_position: {
+                azimuth_deg: 120,
+                altitude_deg: 38,
+                direction: "southeast"
+              },
+              observation_method: "naked eye",
+              duration_minutes: 120,
+              thumbnail: { badge: "Meteor Shower" },
+              summary: "Fast meteors are starting to build before dawn.",
+              why_interesting: "A strong annual shower."
+            };
+          }
           return {};
         },
         text: async () => ""
@@ -206,4 +288,13 @@ test("renders the galaxy map route", async () => {
 
   expect(await screen.findByRole("heading", { name: /Google Maps for morphology space/i })).toBeInTheDocument();
   expect(screen.getByText(/Galaxies loaded/i)).toBeInTheDocument();
+});
+
+test("renders the celestial events route", async () => {
+  window.history.replaceState({}, "", "/sky-feed");
+  render(<App />);
+
+  expect(await screen.findByRole("heading", { name: /Upcoming sky moments/i })).toBeInTheDocument();
+  expect(screen.getAllByText(/Eta Aquariids meteor shower/i).length).toBeGreaterThan(0);
+  expect(await screen.findByText(/This shower comes from Halley's debris stream/i)).toBeInTheDocument();
 });

@@ -231,3 +231,61 @@ class TransientReportResponse(BaseModel):
     generated_at: datetime
     summary_json: dict
     run: TransientRunResponse
+
+
+class EventSkyPositionResponse(BaseModel):
+    azimuth_deg: float | None = None
+    altitude_deg: float | None = None
+    direction: str | None = None
+
+
+class CelestialEventResponse(BaseModel):
+    event_id: str
+    title: str
+    type: str
+    start_time: datetime
+    end_time: datetime
+    peak_time: datetime
+    best_viewing_time: datetime
+    visibility_score: float
+    visibility_label: str
+    magnitude: float | None = None
+    brightness_score: float
+    description: str
+    region_applicability: dict
+    rarity_score: float
+    importance_score: float
+    sky_position: EventSkyPositionResponse
+    observation_method: str
+    duration_minutes: int | float | None = None
+    thumbnail: dict
+    summary: str
+    why_interesting: str = ""
+    personalized_rank: float | None = None
+
+
+class PersonalizedLocationResponse(BaseModel):
+    latitude: float
+    longitude: float
+    timezone: str
+
+
+class TonightSummaryResponse(BaseModel):
+    headline: str
+    summary: str
+    count: int
+
+
+class PersonalizedEventsResponse(BaseModel):
+    requested_location: PersonalizedLocationResponse
+    generated_at: datetime
+    tonight_summary: TonightSummaryResponse
+    events: list[CelestialEventResponse]
+
+
+class CelestialExplanationResponse(BaseModel):
+    event_id: str
+    summary: str
+    why_interesting: str
+    explanation: str
+    source: str

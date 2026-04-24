@@ -53,3 +53,15 @@ export function fetchGalaxyClusters() {
 export function fetchGalaxyExplanation(imageId) {
   return request(`/api/explain/${imageId}`);
 }
+
+export function fetchSkyFeed(params = {}) {
+  return request(`/api/events/personalized${toQueryString(params)}`);
+}
+
+export function fetchSkyEventDetail(eventId, params = {}) {
+  return request(`/api/events/${eventId}${toQueryString(params)}`);
+}
+
+export function fetchSkyEventExplanation(eventId, params = {}) {
+  return request(`/api/events/${eventId}/explain${toQueryString(params)}`);
+}

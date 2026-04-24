@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -20,10 +21,13 @@ from astro_api.repositories import (
     list_transient_candidates,
 )
 from astro_api.services.galaxy_map import GalaxyMapService
+from astro_api.services.celestial_events import CelestialEventsService
 from astro_api.services.llm import LocalInferenceClient
 from astro_api.schemas import (
     CandidateDetailResponse,
     CandidateSummaryResponse,
+    CelestialEventResponse,
+    CelestialExplanationResponse,
     GalaxyClusterSummaryResponse,
     GalaxyDetailResponse,
     GalaxyExplanationResponse,
@@ -31,6 +35,7 @@ from astro_api.schemas import (
     HealthResponse,
     NightlyReportResponse,
     NightlyRunResponse,
+    PersonalizedEventsResponse,
     TransientCandidateDetailResponse,
     TransientCandidateSummaryResponse,
     TransientReportResponse,
@@ -47,6 +52,7 @@ def create_app(
     initialize_database = initialize_database or (lambda: Base.metadata.create_all(bind=engine))
     galaxy_map_service = GalaxyMapService(settings=settings)
     llm_client = LocalInferenceClient(settings=settings)
+    celestial_events_service = CelestialEventsService(settings=settings, llm_client=llm_client)
 
     artifacts_dir = settings.data_dir / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -182,6 +188,108 @@ def create_app(
         if explanation is None:
             raise HTTPException(status_code=404, detail="Galaxy not found.")
         return GalaxyExplanationResponse.model_validate(explanation)
+
+    @app.get("/api/events", response_model=list[CelestialEventResponse])
+    @app.get("/events", response_model=list[CelestialEventResponse], include_in_schema=False)
+    def event_list(
+        lat: float | None = None,
+        lon: float | None = None,
+        timezone: str | None = None,
+        start_days: int = 0,
+        end_days: int = 30,
+        event_type: str | None = None,
+        min_visibility: float | None = None,
+        session: Session = Depends(session_provider),
+    ) -> list[CelestialEventResponse]:
+        now = datetime.now(UTC)
+        events = celestial_events_service.list_feed(
+            session,
+            user_lat=lat,
+            user_lon=lon,
+            timezone_name=timezone,
+            start_time=now + timedelta(days=max(0, start_days)),
+            end_time=now + timedelta(days=max(1, min(end_days, 30))),
+            event_type=event_type,
+            min_visibility=min_visibility,
+        )
+        return [CelestialEventResponse.model_validate(event) for event in events]
+
+    @app.get("/api/events/personalized", response_model=PersonalizedEventsResponse)
+    @app.get("/events/personalized", response_model=PersonalizedEventsResponse, include_in_schema=False)
+    def personalized_events(
+        lat: float,
+        lon: float,
+        timezone: str,
+        days: int = 14,
+        event_type: str | None = None,
+        min_visibility: float | None = None,
+        session: Session = Depends(session_provider),
+    ) -> PersonalizedEventsResponse:
+        payload = celestial_events_service.personalized_feed(
+            session,
+            user_lat=lat,
+            user_lon=lon,
+            timezone_name=timezone,
+            days=days,
+            event_type=event_type,
+            min_visibility=min_visibility,
+        )
+        return PersonalizedEventsResponse.model_validate(payload)
+
+    @app.get("/api/events/{event_id}", response_model=CelestialEventResponse)
+    @app.get("/events/{event_id}", response_model=CelestialEventResponse, include_in_schema=False)
+    def event_detail(
+        event_id: str,
+        lat: float | None = None,
+        lon: float | None = None,
+        timezone: str | None = None,
+        session: Session = Depends(session_provider),
+    ) -> CelestialEventResponse:
+        detail = celestial_events_service.event_detail(
+            session,
+            event_id,
+            user_lat=lat,
+            user_lon=lon,
+            timezone_name=timezone,
+        )
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Event not found.")
+        return CelestialEventResponse.model_validate(detail)
+
+    @app.get("/api/events/{event_id}/explain", response_model=CelestialExplanationResponse)
+    @app.get("/events/{event_id}/explain", response_model=CelestialExplanationResponse, include_in_schema=False)
+    def explain_event(
+        event_id: str,
+        lat: float,
+        lon: float,
+        timezone: str,
+        session: Session = Depends(session_provider),
+    ) -> CelestialExplanationResponse:
+        detail = celestial_events_service.event_detail(
+            session,
+            event_id,
+            user_lat=lat,
+            user_lon=lon,
+            timezone_name=timezone,
+        )
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Event not found.")
+        explanation = celestial_events_service.get_or_generate_copy(
+            session,
+            event_id=event_id,
+            user_lat=lat,
+            user_lon=lon,
+            timezone_name=timezone,
+        )
+        return CelestialExplanationResponse.model_validate(
+            {
+                "event_id": event_id,
+                "summary": explanation["summary"],
+                "why_interesting": explanation["why_interesting"],
+                "explanation": explanation["explanation"],
+                "source": explanation["source"],
+            }
+        )
 
     @app.get("/{full_path:path}")
     def frontend(full_path: str) -> FileResponse:

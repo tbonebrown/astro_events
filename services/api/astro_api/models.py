@@ -184,3 +184,89 @@ class TransientReport(Base):
     summary_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
     run: Mapped[TransientRun] = relationship(back_populates="reports")
+
+
+class CelestialEvent(Base):
+    __tablename__ = "celestial_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_name: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    peak_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    magnitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    region_bounds_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    coordinates_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    observation_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    media_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    source_payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    rarity_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    importance_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    summary_seed: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    visibility_rows: Mapped[list["EventVisibility"]] = relationship(
+        back_populates="event",
+        cascade="all, delete-orphan",
+    )
+    cached_explanations: Mapped[list["CachedCelestialExplanation"]] = relationship(
+        back_populates="event",
+        cascade="all, delete-orphan",
+    )
+
+
+class EventVisibility(Base):
+    __tablename__ = "event_visibility"
+    __table_args__ = (UniqueConstraint("event_id", "region_key", name="uq_event_visibility_region"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("celestial_events.event_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    region_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    visibility_score: Mapped[float] = mapped_column(Float, nullable=False, index=True)
+    best_viewing_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    summary_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    event: Mapped[CelestialEvent] = relationship(back_populates="visibility_rows")
+
+
+class CachedCelestialExplanation(Base):
+    __tablename__ = "cached_explanations"
+    __table_args__ = (
+        UniqueConstraint(
+            "event_id",
+            "latitude",
+            "longitude",
+            "timezone_name",
+            name="uq_celestial_copy_location",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("celestial_events.event_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    timezone_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    why_interesting: Mapped[str] = mapped_column(Text, nullable=False)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="fallback")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    event: Mapped[CelestialEvent] = relationship(back_populates="cached_explanations")

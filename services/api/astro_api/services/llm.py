@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 
 import httpx
 
@@ -125,6 +126,53 @@ class LocalInferenceClient:
             return generated.strip(), "generated"
         return self._fallback_galaxy_explanation(galaxy, cluster_summary, neighbors), "fallback"
 
+    def celestial_event_copy(self, event: dict) -> dict:
+        prompt = (
+            "You are an astronomy assistant writing a personalized sky guide.\n"
+            "Return strict JSON with keys: summary, why_interesting, explanation.\n"
+            f"Title: {event['title']}\n"
+            f"Type: {event['type']}\n"
+            f"Description: {event['description']}\n"
+            f"Visibility label: {event['visibility_label']}\n"
+            f"Best viewing time: {event['best_viewing_time']}\n"
+            f"Observation method: {event['observation_method']}\n"
+            f"Sky direction: {event['sky_position']}\n"
+            "Explain what it is, why it happens, how rare it is, and how to view it from the user's location."
+        )
+        generated = self._post_prompt(prompt)
+        if generated:
+            parsed = self._parse_json(generated)
+            if parsed:
+                return {
+                    "summary": str(parsed.get("summary") or self.fallback_celestial_summary(event)),
+                    "why_interesting": str(
+                        parsed.get("why_interesting") or self._fallback_celestial_why(event)
+                    ),
+                    "explanation": str(
+                        parsed.get("explanation") or self._fallback_celestial_explanation(event)
+                    ),
+                    "source": "generated",
+                }
+        return {
+            "summary": self.fallback_celestial_summary(event),
+            "why_interesting": self._fallback_celestial_why(event),
+            "explanation": self._fallback_celestial_explanation(event),
+            "source": "fallback",
+        }
+
+    @staticmethod
+    def _parse_json(text: str) -> dict | None:
+        candidate = text.strip()
+        if candidate.startswith("```"):
+            candidate = candidate.strip("`")
+            if candidate.startswith("json"):
+                candidate = candidate[4:].strip()
+        try:
+            payload = json.loads(candidate)
+        except Exception:
+            return None
+        return payload if isinstance(payload, dict) else None
+
     @staticmethod
     def _fallback_candidate_explanation(candidate: dict) -> str:
         return (
@@ -197,4 +245,29 @@ class LocalInferenceClient:
             f"{cluster_summary.get('dominant_class', galaxy['predicted_class']).lower()} shapes dominate. "
             f"Its visual signature is consistent with {feature_tags}, and its nearest neighbors look most like {neighbor_labels}. "
             f"{rarity_note}"
+        )
+
+    @staticmethod
+    def fallback_celestial_summary(event: dict) -> str:
+        direction = event.get("sky_position", {}).get("direction", "the southern sky")
+        altitude = event.get("sky_position", {}).get("altitude_deg", 35)
+        return (
+            f"{event['title']} looks {event.get('visibility_label', 'moderate').lower()} from this location. "
+            f"Plan to look {direction} with the event about {altitude} degrees above the horizon."
+        )
+
+    @staticmethod
+    def _fallback_celestial_why(event: dict) -> str:
+        return (
+            f"This {event['type'].replace('_', ' ')} stands out because it combines a "
+            f"{event.get('visibility_label', 'moderate').lower()} viewing window with an easy public-facing observing story."
+        )
+
+    @staticmethod
+    def _fallback_celestial_explanation(event: dict) -> str:
+        return (
+            f"{event['title']} is a {event['type'].replace('_', ' ')} event. {event['description']} "
+            f"It reaches its best local viewing window around {event['best_viewing_time']}. "
+            f"For this location, the most comfortable plan is to look {event.get('sky_position', {}).get('direction', 'south')} "
+            f"and use {event['observation_method']}."
         )

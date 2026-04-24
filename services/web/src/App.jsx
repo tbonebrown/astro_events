@@ -7,6 +7,7 @@ import {
   fetchTransients
 } from "./api";
 import GalaxyMap from "./components/GalaxyMap";
+import SkyFeedPage from "./pages/SkyFeedPage";
 
 function readRoute() {
   const pathname = window.location.pathname || "/";
@@ -25,6 +26,9 @@ function readRoute() {
   }
   if (parts[0] === "galaxy-map") {
     return { page: "galaxy-map" };
+  }
+  if (parts[0] === "sky-feed") {
+    return { page: "sky-feed" };
   }
   if (parts[0] === "transients") {
     return { page: "feed" };
@@ -81,6 +85,51 @@ function ProjectCard({ eyebrow, title, description, highlights, cta, onOpen }) {
         {cta}
       </button>
     </article>
+  );
+}
+
+function BrandMark() {
+  return (
+    <div className="brand-mark" aria-label="Ohnita">
+      <div className="brand-mark__icon" aria-hidden="true">
+        <svg viewBox="0 0 72 72" role="presentation" focusable="false">
+          <defs>
+            <linearGradient id="moon-stroke" x1="16" y1="14" x2="55" y2="57" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#fff3b0" />
+              <stop offset="52%" stopColor="#eaff8f" />
+              <stop offset="100%" stopColor="#8bddff" />
+            </linearGradient>
+            <radialGradient
+              id="moon-glow"
+              cx="0"
+              cy="0"
+              r="1"
+              gradientTransform="translate(36 36) rotate(90) scale(28)"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop offset="0%" stopColor="#e9ff7a" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#e9ff7a" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="36" cy="36" r="26" fill="url(#moon-glow)" />
+          <path
+            d="M45.5 16.5c-4.1 1.4-7.6 4.2-10 8.1-4.9 8-2.3 18.5 5.7 23.4 3.9 2.4 8.5 3 12.7 2-2.1 3.1-5 5.7-8.5 7.3-10.6 5.1-23.3.6-28.4-10-5.1-10.6-.6-23.3 10-28.4 6-2.9 12.7-2.7 18.5-.4z"
+            fill="none"
+            stroke="url(#moon-stroke)"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="49" cy="22" r="2.4" fill="#eef7ff" />
+          <circle cx="55" cy="31" r="1.6" fill="#8bddff" />
+        </svg>
+      </div>
+      <div className="brand-mark__copy">
+        <span className="brand-mark__eyebrow">Astronomy atlas</span>
+        <strong>OHNITA</strong>
+        <span className="brand-mark__domain">Oneida for moon</span>
+      </div>
+    </div>
   );
 }
 
@@ -231,6 +280,18 @@ function HomeView({
             ]}
             cta="Open the TESS module"
             onOpen={() => onOpenRoute("/tess")}
+          />
+          <ProjectCard
+            eyebrow="Skywatching"
+            title="Celestial Events Feed"
+            description="A location-aware astronomy feed that ranks what is worth stepping outside for this week, with visibility guidance and plain-language explanations."
+            highlights={[
+              "Personalized rankings based on local sky visibility",
+              "LLM summaries for quick context and deeper detail",
+              "Timeline browsing plus saved events for repeat visits"
+            ]}
+            cta="Open sky feed"
+            onOpen={() => onOpenRoute("/sky-feed")}
           />
           <ProjectCard
             eyebrow="Embedding intelligence"
@@ -485,17 +546,18 @@ export default function App() {
 
       <header className="hero">
         <div className="hero__copy">
-          <p className="eyebrow">Ohnita.com</p>
+          <BrandMark />
           <h1>A place to learn from the sky through live data and open exploration.</h1>
           <p className="hero__lede">
-            Ohnita brings together astronomy observations, explanations, and interactive views so
-            visitors can explore what is changing, understand why it matters, and keep following
-            their curiosity.
+            Named for the moon, Ohnita brings together astronomy observations, explanations, and
+            interactive views so visitors can explore what is changing, understand why it matters,
+            and keep following their curiosity.
           </p>
         </div>
         <nav className="nav-tabs" aria-label="Primary">
           <button onClick={() => setRoute("/")}>Home</button>
           <button onClick={() => setRoute("/transients")}>Transient feed</button>
+          <button onClick={() => setRoute("/sky-feed")}>Sky feed</button>
           <button onClick={() => setRoute("/transients/reports/latest")}>Nightly report</button>
           <button onClick={() => setRoute("/tess")}>TESS module</button>
           <button onClick={() => setRoute("/galaxy-map")}>Galaxy map</button>
@@ -572,6 +634,8 @@ export default function App() {
           <TessView candidates={tessCandidates} loading={loadingTess} error={tessError} />
         </main>
       ) : null}
+
+      {route.page === "sky-feed" ? <SkyFeedPage /> : null}
 
       {route.page === "galaxy-map" ? <GalaxyMap /> : null}
     </div>

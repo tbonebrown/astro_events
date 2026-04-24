@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from sqlalchemy import desc, select
+from datetime import UTC, datetime
+
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from astro_api.models import (
     Candidate,
+    CachedCelestialExplanation,
+    CelestialEvent,
+    EventVisibility,
     NightlyReport,
     NightlyRun,
     TransientCandidate,
@@ -113,3 +118,103 @@ def get_latest_transient_report(session: Session) -> TransientReport | None:
         .order_by(desc(TransientReport.generated_at))
         .limit(1)
     )
+
+
+def count_upcoming_celestial_events(session: Session, now: datetime | None = None) -> int:
+    current = now or datetime.now(UTC)
+    return int(
+        session.scalar(
+            select(func.count(CelestialEvent.event_id)).where(CelestialEvent.end_time >= current)
+        )
+        or 0
+    )
+
+
+def upsert_celestial_event(session: Session, payload: dict) -> CelestialEvent:
+    event = session.get(CelestialEvent, payload["event_id"])
+    if event is None:
+        event = CelestialEvent(event_id=payload["event_id"])
+        session.add(event)
+    for key, value in payload.items():
+        setattr(event, key, value)
+    return event
+
+
+def list_celestial_events(
+    session: Session,
+    *,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    event_type: str | None = None,
+) -> list[CelestialEvent]:
+    statement = select(CelestialEvent).order_by(CelestialEvent.peak_time.asc())
+    if start_time is not None:
+        statement = statement.where(CelestialEvent.end_time >= start_time)
+    if end_time is not None:
+        statement = statement.where(CelestialEvent.start_time <= end_time)
+    if event_type is not None:
+        statement = statement.where(CelestialEvent.event_type == event_type)
+    return list(session.scalars(statement))
+
+
+def get_celestial_event(session: Session, event_id: str) -> CelestialEvent | None:
+    return session.get(CelestialEvent, event_id)
+
+
+def get_event_visibility_cache(session: Session, event_id: str, region_key: str) -> EventVisibility | None:
+    return session.scalar(
+        select(EventVisibility)
+        .where(EventVisibility.event_id == event_id, EventVisibility.region_key == region_key)
+        .limit(1)
+    )
+
+
+def upsert_event_visibility(session: Session, payload: dict) -> EventVisibility:
+    row = get_event_visibility_cache(session, payload["event_id"], payload["region_key"])
+    if row is None:
+        row = EventVisibility(event_id=payload["event_id"], region_key=payload["region_key"])
+        session.add(row)
+    for key, value in payload.items():
+        setattr(row, key, value)
+    return row
+
+
+def get_cached_celestial_copy(
+    session: Session,
+    *,
+    event_id: str,
+    latitude: float,
+    longitude: float,
+    timezone_name: str,
+) -> CachedCelestialExplanation | None:
+    return session.scalar(
+        select(CachedCelestialExplanation)
+        .where(
+            CachedCelestialExplanation.event_id == event_id,
+            CachedCelestialExplanation.latitude == latitude,
+            CachedCelestialExplanation.longitude == longitude,
+            CachedCelestialExplanation.timezone_name == timezone_name,
+        )
+        .limit(1)
+    )
+
+
+def save_cached_celestial_copy(session: Session, payload: dict) -> CachedCelestialExplanation:
+    row = get_cached_celestial_copy(
+        session,
+        event_id=payload["event_id"],
+        latitude=payload["latitude"],
+        longitude=payload["longitude"],
+        timezone_name=payload["timezone_name"],
+    )
+    if row is None:
+        row = CachedCelestialExplanation(
+            event_id=payload["event_id"],
+            latitude=payload["latitude"],
+            longitude=payload["longitude"],
+            timezone_name=payload["timezone_name"],
+        )
+        session.add(row)
+    for key, value in payload.items():
+        setattr(row, key, value)
+    return row
