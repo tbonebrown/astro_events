@@ -554,16 +554,17 @@ class CelestialEventsService:
                 4,
             )
         events.sort(key=lambda event: (-event["personalized_rank"], event["best_viewing_time"]))
-        for event in events[: min(8, len(events))]:
-            copy = self.get_or_generate_copy(
+        for event in events:
+            cached = get_cached_celestial_copy(
                 session,
                 event_id=event["event_id"],
-                user_lat=user_lat,
-                user_lon=user_lon,
+                latitude=user_lat,
+                longitude=user_lon,
                 timezone_name=timezone_name,
             )
-            event["summary"] = copy["summary"]
-            event["why_interesting"] = copy["why_interesting"]
+            if cached is not None:
+                event["summary"] = cached.summary
+                event["why_interesting"] = cached.why_interesting
         tonight_cutoff = now + timedelta(hours=24)
         tonight = [event for event in events if event["best_viewing_time"] <= tonight_cutoff][:3]
         return {
