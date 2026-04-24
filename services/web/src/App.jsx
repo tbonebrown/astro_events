@@ -127,7 +127,7 @@ function BrandMark() {
       <div className="brand-mark__copy">
         <span className="brand-mark__eyebrow">Astronomy atlas</span>
         <strong>OHNITA</strong>
-        <span className="brand-mark__domain">Oneida for moon</span>
+        <span className="brand-mark__domain">Explore the living sky</span>
       </div>
     </div>
   );

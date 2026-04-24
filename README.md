@@ -40,7 +40,7 @@ npm install
 4. Run the backend:
 
 ```bash
-uvicorn services.api.main:app --reload
+uvicorn services.api.main:app --reload --proxy-headers --forwarded-allow-ips='*'
 ```
 
 5. Run the frontend during development:
@@ -59,6 +59,47 @@ astro-transients-nightly --synthetic --limit 12 --export-root ./exports
 astro-api-ingest-transients --export-dir ./exports/transients/latest
 ```
 
+### Windows workstation quick start
+
+If you are running the pipelines on the Windows 5090 workstation, the repository now includes
+PowerShell helpers under `ops/windows`:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -e .[dev]
+Copy-Item .env.example .env
+powershell -ExecutionPolicy Bypass -File .\ops\windows\seed_demo_data.ps1
+powershell -ExecutionPolicy Bypass -File .\ops\windows\register_tasks.ps1
+```
+
+`seed_demo_data.ps1` runs the first synthetic publish so the local API has content immediately.
+`register_tasks.ps1` creates an `Astro Events API` scheduled task that starts the API on logon.
+`publish_latest_to_server.ps1` copies the current `latest` TESS and transient export trees from the
+workstation to the Linux server runtime path at `tbone@100.81.22.102:~/astro_events_runtime/exports`.
+`register_nightly_task.ps1` creates a `3:00 AM` scheduled task that runs transients nightly, publishes
+them to the server, and runs TESS only when `TESS_TARGET_FILE` exists in `.env` or at
+`data\tic_targets.csv`.
+`refresh_tess_targets.ps1` can download that CSV automatically before the nightly run when
+`TESS_TARGET_URL` is set in `.env`, or copy it from the server first when
+`TESS_TARGET_SERVER_PATH` is set to something like
+`tbone@100.81.22.102:astro_events_runtime/config/tic_targets.csv`.
+
+### Automated TESS target generation
+
+The repository also includes a server-side generator for `tic_targets.csv`. It queries the official
+MAST TIC or CTL services, writes the result to `TESS_TARGET_OUTPUT`, and can be scheduled before the
+workstation's `3:00 AM` run:
+
+```bash
+source .venv/bin/activate
+python3 ./scripts/generate_tess_targets.py
+```
+
+The default configuration uses the curated `CTL` catalog and writes a target list with a `tic_id`
+column plus helpful metadata. You can tune the generated target list using environment variables such
+as `TESS_TARGET_LIMIT`, `TESS_TARGET_MIN_TMAG`, `TESS_TARGET_MAX_TMAG`, `TESS_TARGET_MIN_TEFF`,
+`TESS_TARGET_MAX_TEFF`, `TESS_TARGET_MIN_LOGG`, and `TESS_TARGET_MAX_LOGG`.
+
 ## Deployment notes
 
 - The public app is intended to run on the R9700 server behind Cloudflare Tunnel.
@@ -68,6 +109,7 @@ astro-api-ingest-transients --export-dir ./exports/transients/latest
   `/transients/reports/latest`, and `/tess`.
 - Postgres is the application system of record; Parquet exports remain the immutable ML artifact layer.
 - The repository includes example `systemd`, Docker, and Cloudflare Tunnel scaffolding under `ops/`.
+- The server-side ingest path now includes a transient ingest script and example `systemd` timer/service.
 
 ### Minimum steps to make the site live
 
@@ -84,3 +126,4 @@ npm run build
 4. Install the Cloudflare tunnel config from `ops/cloudflare/cloudflared.example.yml` and point it at your real tunnel credentials file.
 5. In Cloudflare DNS/Tunnel routing, map `ohnita.com` to that tunnel.
 6. Start `cloudflared` and verify `http://127.0.0.1:8000/api/health` works locally on the server before checking the public domain.
+7. In Cloudflare, enable an edge redirect so `http://ohnita.com/...` is upgraded to HTTPS before the request reaches the app.

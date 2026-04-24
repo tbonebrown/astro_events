@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Astro Event Intelligence nightly transient ingest
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

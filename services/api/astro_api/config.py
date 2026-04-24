@@ -5,6 +5,14 @@ from pathlib import Path
 import os
 
 
+def _env_flag(name: str, default: str = "true") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_hosts(name: str, default: str) -> tuple[str, ...]:
+    return tuple(host.strip().lower() for host in os.getenv(name, default).split(",") if host.strip())
+
+
 @dataclass(slots=True)
 class AppSettings:
     app_name: str = os.getenv("APP_NAME", "Astro Event Intelligence")
@@ -21,3 +29,7 @@ class AppSettings:
     local_inference_model: str = os.getenv("LOCAL_INFERENCE_MODEL", "astro-explainer")
     local_inference_provider: str = os.getenv("LOCAL_INFERENCE_PROVIDER", "ollama")
     default_sector: int = int(os.getenv("DEFAULT_SECTOR", "58"))
+    public_hosts: tuple[str, ...] = _env_hosts("PUBLIC_HOSTS", "ohnita.com,www.ohnita.com")
+    force_https: bool = _env_flag("FORCE_HTTPS", "true")
+    hsts_enabled: bool = _env_flag("HSTS_ENABLED", "true")
+    hsts_max_age: int = int(os.getenv("HSTS_MAX_AGE", "31536000"))

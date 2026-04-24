@@ -37,12 +37,16 @@ ml = [
 tess = [
   "lightkurve>=2.5.0",
 ]
+targets = [
+  "astroquery>=0.4.11",
+]
 
 [project.scripts]
 astro-tess-nightly = "astro_tess.cli:main"
 astro-transients-nightly = "astro_transients.cli:main"
 astro-api-ingest = "astro_api.cli.ingest:main"
 astro-api-ingest-transients = "astro_api.cli.ingest_transients:main"
+astro-api-refresh-events = "astro_api.cli.refresh_events:main"
 
 [tool.setuptools.packages.find]
 where = ["services/api", "pipelines/tess", "pipelines/transients"]

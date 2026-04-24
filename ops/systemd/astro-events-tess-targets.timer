@@ -1,0 +1,9 @@
+[Unit]
+Description=Refresh Astro Events TESS target file
+
+[Timer]
+OnCalendar=*-*-* 02:40:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

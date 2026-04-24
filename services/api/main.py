@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+import json
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
@@ -42,6 +43,38 @@ from astro_api.schemas import (
 )
 
 
+def _request_host(request: Request) -> str:
+    forwarded_host = request.headers.get("x-forwarded-host")
+    host = forwarded_host.split(",")[0].strip() if forwarded_host else request.headers.get("host", "")
+    if host:
+        return host.split(":")[0].lower()
+    return (request.url.hostname or "").lower()
+
+
+def _request_scheme(request: Request) -> str:
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    if forwarded_proto:
+        return forwarded_proto.split(",")[0].strip().lower()
+
+    forwarded = request.headers.get("forwarded", "")
+    for entry in forwarded.split(","):
+        for segment in entry.split(";"):
+            key, _, value = segment.strip().partition("=")
+            if key.lower() == "proto" and value:
+                return value.strip('"').lower()
+
+    cf_visitor = request.headers.get("cf-visitor")
+    if cf_visitor:
+        try:
+            scheme = json.loads(cf_visitor).get("scheme")
+        except json.JSONDecodeError:
+            scheme = None
+        if isinstance(scheme, str) and scheme:
+            return scheme.lower()
+
+    return request.url.scheme.lower()
+
+
 def create_app(
     settings: AppSettings | None = None,
     session_provider: Callable[[], Iterator[Session]] | None = None,
@@ -65,6 +98,27 @@ def create_app(
 
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.mount("/artifacts", StaticFiles(directory=artifacts_dir), name="artifacts")
+
+    secure_hosts = set(settings.public_hosts)
+
+    @app.middleware("http")
+    async def transport_security(request: Request, call_next):
+        host = _request_host(request)
+        scheme = _request_scheme(request)
+
+        if settings.force_https and host in secure_hosts and scheme == "http":
+            redirect_url = request.url.replace(scheme="https")
+            return RedirectResponse(url=str(redirect_url), status_code=308)
+
+        response = await call_next(request)
+
+        if settings.hsts_enabled and host in secure_hosts and scheme == "https":
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                f"max-age={settings.hsts_max_age}; includeSubDomains",
+            )
+
+        return response
 
     assets_dir = settings.static_dir / "assets"
     if assets_dir.exists():

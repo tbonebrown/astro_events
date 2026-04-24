@@ -21,4 +21,4 @@ COPY --from=web-build /web/dist ./services/web/dist
 RUN python -m pip install --upgrade pip && \
     python -m pip install .
 
-CMD ["uvicorn", "services.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "services.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
