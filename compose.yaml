@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: astro-events-postgres
+    environment:
+      POSTGRES_DB: astro_events
+      POSTGRES_USER: astro
+      POSTGRES_PASSWORD: astro
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: astro-events-api
+    depends_on:
+      - postgres
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: postgresql+psycopg://astro:astro@postgres:5432/astro_events
+      DATA_DIR: /app/var/data
+      EXPORTS_DIR: /app/exports
+      STATIC_DIR: /app/services/web/dist
+      LOCAL_INFERENCE_URL: ${LOCAL_INFERENCE_URL:-http://host.docker.internal:11434/api/generate}
+      LOCAL_INFERENCE_MODEL: ${LOCAL_INFERENCE_MODEL:-astro-explainer}
+      LOCAL_INFERENCE_PROVIDER: ${LOCAL_INFERENCE_PROVIDER:-ollama}
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8010}:8000"
+    volumes:
+      - ./exports:/app/exports
+      - ./var:/app/var
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres_data:

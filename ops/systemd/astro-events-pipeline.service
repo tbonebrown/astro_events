@@ -1,0 +1,10 @@
+[Unit]
+Description=Astro Event Intelligence nightly TESS pipeline
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/astro_events
+EnvironmentFile=/srv/astro_events/.env
+ExecStart=/srv/astro_events/scripts/nightly_pipeline.sh
+

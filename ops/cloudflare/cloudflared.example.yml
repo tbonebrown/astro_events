@@ -1,0 +1,7 @@
+tunnel: astro-events
+credentials-file: /etc/cloudflared/astro-events.json
+
+ingress:
+  - hostname: ohnita.com
+    service: http://127.0.0.1:8000
+  - service: http_status:404

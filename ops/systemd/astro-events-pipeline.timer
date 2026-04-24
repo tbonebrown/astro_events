@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Astro Event Intelligence nightly TESS pipeline
+
+[Timer]
+OnCalendar=*-*-* 01:10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

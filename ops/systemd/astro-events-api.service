@@ -1,0 +1,15 @@
+[Unit]
+Description=Astro Event Intelligence API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/astro_events
+EnvironmentFile=/srv/astro_events/.env
+ExecStart=/srv/astro_events/.venv/bin/uvicorn services.api.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,10 @@
+[Unit]
+Description=Astro Event Intelligence nightly ingest
+After=network.target astro-events-api.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/astro_events
+EnvironmentFile=/srv/astro_events/.env
+ExecStart=/srv/astro_events/scripts/nightly_ingest.sh
+
