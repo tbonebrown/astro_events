@@ -22,8 +22,9 @@ class AppSettings:
     exports_dir: Path = Path(os.getenv("EXPORTS_DIR", "./exports"))
     static_dir: Path = Path(os.getenv("STATIC_DIR", "./services/web/dist"))
     galaxy_map_artifact: Path = Path(
-        os.getenv("GALAXY_MAP_ARTIFACT", "./var/data/galaxy_map/embeddings.parquet")
+        os.getenv("GALAXY_MAP_ARTIFACT", "./var/data/galaxy_map/galaxies.parquet")
     )
+    galaxy_map_dir: Path = Path(os.getenv("GALAXY_MAP_DIR", "./var/data/galaxy_map"))
     galaxy_map_demo_size: int = int(os.getenv("GALAXY_MAP_DEMO_SIZE", "12500"))
     local_inference_url: str = os.getenv("LOCAL_INFERENCE_URL", "http://127.0.0.1:11434/api/generate")
     local_inference_model: str = os.getenv("LOCAL_INFERENCE_MODEL", "astro-explainer")

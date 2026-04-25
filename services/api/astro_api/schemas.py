@@ -73,10 +73,19 @@ class GalaxyPointResponse(BaseModel):
     z: float
     cluster_id: int
     cluster_name: str
+    plain_cluster_name: str | None = None
     predicted_class: str
+    scientific_label: str | None = None
+    simple_label: str | None = None
     morphology: str
     confidence: float
     rarity_score: float
+    redshift: float | None = None
+    magnitude: float | None = None
+    source_field: str | None = None
+    instrument: str | None = None
+    filter_band: str | None = None
+    thumbnail_url: str | None = None
     is_outlier: bool
 
 
@@ -101,16 +110,22 @@ class GalaxyNeighborResponse(BaseModel):
     image_id: str
     cluster_id: int
     cluster_name: str
+    plain_cluster_name: str | None = None
     predicted_class: str
+    scientific_label: str | None = None
+    simple_label: str | None = None
     x: float
     y: float
     confidence: float
+    redshift: float | None = None
+    magnitude: float | None = None
     image_url: str
 
 
 class GalaxyClusterSummaryResponse(BaseModel):
     cluster_id: int
     cluster_name: str
+    plain_cluster_name: str | None = None
     count: int
     centroid_x: float
     centroid_y: float
@@ -119,6 +134,9 @@ class GalaxyClusterSummaryResponse(BaseModel):
     avg_rarity: float
     dominant_class: str
     summary: str
+    plain_summary: str | None = None
+    redshift_min: float | None = None
+    redshift_max: float | None = None
     representatives: list[GalaxyNeighborResponse]
 
 
@@ -133,24 +151,38 @@ class GalaxyDetailCoordinatesResponse(BaseModel):
 class GalaxyMetadataResponse(BaseModel):
     catalog: str
     survey: str
+    observation_source: str | None = None
+    observation_program: str | None = None
+    source_field: str | None = None
+    instrument: str | None = None
+    filter_band: str | None = None
     redshift: float
+    magnitude: float | None = None
+    brightness_score: float | None = None
+    lookback_time_gyr: float | None = None
     stellar_mass_log10: float
     star_formation_rate: float
     surface_brightness: float
     feature_tags: list[str]
+    morphology_tags: list[str] = []
+    data_mode: str | None = None
 
 
 class GalaxyClusterDetailResponse(BaseModel):
     cluster_id: int
     cluster_name: str
+    plain_cluster_name: str | None = None
     count: int
     summary: str
+    plain_summary: str | None = None
     dominant_class: str | None = None
     avg_rarity: float | None = None
     centroid_x: float | None = None
     centroid_y: float | None = None
     extent_x: float | None = None
     extent_y: float | None = None
+    redshift_min: float | None = None
+    redshift_max: float | None = None
 
 
 class GalaxyDetailResponse(BaseModel):
@@ -158,7 +190,10 @@ class GalaxyDetailResponse(BaseModel):
     image_url: str
     cluster_id: int
     cluster_name: str
+    plain_cluster_name: str | None = None
     predicted_class: str
+    scientific_label: str | None = None
+    simple_label: str | None = None
     morphology: str
     confidence: float
     rarity_score: float
@@ -172,6 +207,52 @@ class GalaxyExplanationResponse(BaseModel):
     image_id: str
     explanation: str
     source: str
+
+
+class GalaxyFilterRangesResponse(BaseModel):
+    redshift_min: float
+    redshift_max: float
+    magnitude_min: float
+    magnitude_max: float
+
+
+class GalaxyStoryStepResponse(BaseModel):
+    id: str
+    title: str
+    body: str
+
+
+class GalaxyMethodStepResponse(BaseModel):
+    title: str
+    detail: str
+
+
+class GalaxyDataSourceResponse(BaseModel):
+    label: str
+    detail: str
+
+
+class GalaxyArtifactInfoResponse(BaseModel):
+    name: str
+    path: str
+    description: str
+
+
+class GalaxyManifestResponse(BaseModel):
+    title: str
+    subtitle: str
+    total_galaxies: int
+    data_mode: str
+    ranges: GalaxyFilterRangesResponse
+    instruments: list[str]
+    filter_bands: list[str]
+    morphologies: list[str]
+    source_fields: list[str]
+    clusters: list[GalaxyClusterSummaryResponse]
+    story_steps: list[GalaxyStoryStepResponse]
+    methodology: list[GalaxyMethodStepResponse]
+    data_sources: list[GalaxyDataSourceResponse]
+    artifacts: list[GalaxyArtifactInfoResponse]
 
 
 class TransientArtifactResponse(BaseModel):

@@ -1,30 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  fetchGalaxyClusters,
   fetchGalaxyDetail,
   fetchGalaxyExplanation,
-  fetchGalaxyMap
+  fetchGalaxyMap,
+  fetchGalaxyMapManifest,
 } from "../api";
-import GalaxyDetailPanel from "./GalaxyDetailPanel";
+import ClusterSummaryPanel from "./ClusterSummaryPanel";
+import FilterBar from "./FilterBar";
+import GalaxyDetailDrawer from "./GalaxyDetailDrawer";
+import StoryModeOverlay from "./StoryModeOverlay";
+
+function navigate(path) {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
 
 function clusterColor(clusterId) {
   const palette = [
-    "#66d9ff",
-    "#92ff7a",
+    "#8bddff",
+    "#9fffb2",
     "#ffd86a",
-    "#ff9b7c",
-    "#8dd8ff",
-    "#ff7fb2",
-    "#a5a2ff",
-    "#89ffd7",
-    "#ffc27a",
-    "#9be1ff",
-    "#f4b5ff",
-    "#ffdcb5",
-    "#b6f1d3",
-    "#ffb2d1",
-    "#ffffff"
+    "#ff8f6b",
+    "#7de7ff",
+    "#ff94be",
+    "#d7ff72",
+    "#84ffd5",
+    "#ffbf88",
+    "#99e2ff",
+    "#d0b8ff",
+    "#f7d799",
+    "#f4f4ff",
   ];
   if (clusterId < 0) {
     return "#fff1ad";
@@ -36,22 +42,90 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function viewFromBounds(bounds, padding = 0.18) {
+function viewFromBounds(bounds, padding = 0.14) {
   const width = bounds.max_x - bounds.min_x || 1;
   const height = bounds.max_y - bounds.min_y || 1;
   return {
     centerX: (bounds.min_x + bounds.max_x) / 2,
     centerY: (bounds.min_y + bounds.max_y) / 2,
     spanX: width * (1 + padding),
-    spanY: height * (1 + padding)
+    spanY: height * (1 + padding),
   };
 }
 
-function formatNumber(value, digits = 2) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return "n/a";
+function readMapState() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    clusterId: params.get("cluster") || "",
+    morphology: params.get("morphology") || "",
+    instrument: params.get("instrument") || "",
+    filterBand: params.get("band") || "",
+    sourceField: params.get("field") || "",
+    redshiftMin: params.get("zMin") || "",
+    redshiftMax: params.get("zMax") || "",
+    magnitudeMax: params.get("magMax") || "",
+    search: params.get("search") || "",
+    labelMode: params.get("labels") || "scientific",
+    selectedId: params.get("selected") || "",
+  };
+}
+
+function writeMapState(filters, selectedId) {
+  const params = new URLSearchParams();
+  const mapping = {
+    clusterId: "cluster",
+    morphology: "morphology",
+    instrument: "instrument",
+    filterBand: "band",
+    sourceField: "field",
+    redshiftMin: "zMin",
+    redshiftMax: "zMax",
+    magnitudeMax: "magMax",
+    search: "search",
+    labelMode: "labels",
+  };
+  Object.entries(mapping).forEach(([key, alias]) => {
+    if (filters[key]) {
+      params.set(alias, filters[key]);
+    }
+  });
+  if (selectedId) {
+    params.set("selected", selectedId);
   }
-  return Number(value).toFixed(digits);
+  const query = params.toString();
+  const nextPath = `${window.location.pathname}${query ? `?${query}` : ""}`;
+  window.history.replaceState({}, "", nextPath);
+}
+
+function buildQuery(filters) {
+  return {
+    limit: 15000,
+    cluster_id: filters.clusterId ? Number(filters.clusterId) : undefined,
+    morphology: filters.morphology || undefined,
+    instrument: filters.instrument || undefined,
+    filter_band: filters.filterBand || undefined,
+    source_field: filters.sourceField || undefined,
+    redshift_min: filters.redshiftMin || undefined,
+    redshift_max: filters.redshiftMax || undefined,
+    magnitude_max: filters.magnitudeMax || undefined,
+    search: filters.search || undefined,
+  };
+}
+
+function LabsNav() {
+  return (
+    <div className="labs-subnav" aria-label="Galaxy map sections">
+      <button className="ghost-button" type="button" onClick={() => navigate("/labs/galaxy-map")}>
+        Experience
+      </button>
+      <button className="ghost-button" type="button" onClick={() => navigate("/labs/galaxy-map/about")}>
+        Methodology
+      </button>
+      <button className="ghost-button" type="button" onClick={() => navigate("/labs/galaxy-map/data")}>
+        Data
+      </button>
+    </div>
+  );
 }
 
 function MapCanvas({
@@ -59,54 +133,33 @@ function MapCanvas({
   bounds,
   selectedId,
   neighborIds,
-  focusedCluster,
+  activeCluster,
   hoverPreview,
+  labelMode,
   onHoverPoint,
   onSelectPoint,
-  onViewportChange
 }) {
   const canvasRef = useRef(null);
   const surfaceRef = useRef(null);
   const dragRef = useRef(null);
-  const debounceRef = useRef(null);
-  const viewportChangeRef = useRef(onViewportChange);
   const [view, setView] = useState(() => viewFromBounds(bounds));
   const [hoverState, setHoverState] = useState(null);
-  const [depthMode, setDepthMode] = useState(true);
-
-  useEffect(() => {
-    viewportChangeRef.current = onViewportChange;
-  }, [onViewportChange]);
 
   useEffect(() => {
     setView(viewFromBounds(bounds));
-  }, [bounds.min_x, bounds.max_x, bounds.min_y, bounds.max_y]);
+  }, [bounds.max_x, bounds.max_y, bounds.min_x, bounds.min_y]);
 
   useEffect(() => {
-    if (!focusedCluster) {
+    if (!activeCluster) {
       return;
     }
     setView({
-      centerX: focusedCluster.centroid_x,
-      centerY: focusedCluster.centroid_y,
-      spanX: Math.max(focusedCluster.extent_x * 1.9, 1.8),
-      spanY: Math.max(focusedCluster.extent_y * 1.9, 1.4)
+      centerX: activeCluster.centroid_x,
+      centerY: activeCluster.centroid_y,
+      spanX: Math.max(activeCluster.extent_x * 1.8, 1.8),
+      spanY: Math.max(activeCluster.extent_y * 1.8, 1.5),
     });
-  }, [focusedCluster]);
-
-  useEffect(() => {
-    window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      viewportChangeRef.current({
-        min_x: view.centerX - view.spanX / 2,
-        max_x: view.centerX + view.spanX / 2,
-        min_y: view.centerY - view.spanY / 2,
-        max_y: view.centerY + view.spanY / 2,
-        zoom: (bounds.max_x - bounds.min_x) / Math.max(view.spanX, 0.0001)
-      });
-    }, 180);
-    return () => window.clearTimeout(debounceRef.current);
-  }, [bounds.max_x, bounds.min_x, view]);
+  }, [activeCluster]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -114,7 +167,6 @@ function MapCanvas({
     if (!canvas || !surface) {
       return;
     }
-
     const ratio = window.devicePixelRatio || 1;
     const width = surface.clientWidth;
     const height = surface.clientHeight;
@@ -128,74 +180,55 @@ function MapCanvas({
     context.clearRect(0, 0, width, height);
 
     const background = context.createLinearGradient(0, 0, width, height);
-    background.addColorStop(0, "rgba(7, 24, 44, 0.94)");
-    background.addColorStop(1, "rgba(3, 9, 20, 0.98)");
+    background.addColorStop(0, "rgba(6, 18, 32, 0.96)");
+    background.addColorStop(0.6, "rgba(7, 21, 38, 0.98)");
+    background.addColorStop(1, "rgba(2, 6, 16, 1)");
     context.fillStyle = background;
     context.fillRect(0, 0, width, height);
 
-    for (let index = 0; index < 55; index += 1) {
-      context.fillStyle = `rgba(255,255,255,${0.06 + ((index % 5) * 0.03)})`;
+    for (let index = 0; index < 64; index += 1) {
+      context.fillStyle = `rgba(255,255,255,${0.04 + ((index % 5) * 0.02)})`;
       context.beginPath();
-      context.arc(
-        (index * 97) % width,
-        (index * 53) % height,
-        0.5 + (index % 4),
-        0,
-        Math.PI * 2
-      );
+      context.arc((index * 89) % width, (index * 47) % height, 0.6 + (index % 3), 0, Math.PI * 2);
       context.fill();
     }
 
-    const selectedSet = new Set([selectedId]);
     const neighborSet = new Set(neighborIds);
-
     points.forEach((point) => {
       const screenX = ((point.x - (view.centerX - view.spanX / 2)) / view.spanX) * width;
       const screenY = height - (((point.y - (view.centerY - view.spanY / 2)) / view.spanY) * height);
-      if (screenX < -8 || screenX > width + 8 || screenY < -8 || screenY > height + 8) {
+      if (screenX < -10 || screenX > width + 10 || screenY < -10 || screenY > height + 10) {
         return;
       }
-
-      const depthBoost = depthMode ? (point.z - bounds.min_z) / Math.max(bounds.max_z - bounds.min_z, 0.001) : 0.5;
-      let radius = 1.7 + depthBoost * 1.7;
+      const depthBoost = (point.z - bounds.min_z) / Math.max(bounds.max_z - bounds.min_z, 0.001);
+      let radius = 1.6 + depthBoost * 1.7;
       if (neighborSet.has(point.image_id)) {
-        radius = 4.6;
+        radius = 4.4;
       }
-      if (selectedSet.has(point.image_id)) {
-        radius = 6.2;
+      if (selectedId === point.image_id) {
+        radius = 6;
       }
       if (point.is_outlier) {
-        radius += 1.1;
+        radius += 0.8;
       }
-      context.globalAlpha = point.is_outlier ? 0.95 : 0.72;
+      const dimmed = activeCluster && activeCluster.cluster_id !== point.cluster_id && selectedId !== point.image_id;
+      context.globalAlpha = dimmed ? 0.14 : point.is_outlier ? 0.94 : 0.72;
       context.fillStyle = clusterColor(point.cluster_id);
       context.beginPath();
       context.arc(screenX, screenY, radius, 0, Math.PI * 2);
       context.fill();
 
-      if (neighborSet.has(point.image_id) || selectedSet.has(point.image_id)) {
+      if (neighborSet.has(point.image_id) || selectedId === point.image_id) {
         context.globalAlpha = 0.22;
-        context.strokeStyle = selectedSet.has(point.image_id) ? "#ffffff" : clusterColor(point.cluster_id);
-        context.lineWidth = selectedSet.has(point.image_id) ? 2.6 : 1.4;
+        context.strokeStyle = selectedId === point.image_id ? "#ffffff" : clusterColor(point.cluster_id);
+        context.lineWidth = selectedId === point.image_id ? 2.4 : 1.4;
         context.beginPath();
         context.arc(screenX, screenY, radius + 5, 0, Math.PI * 2);
         context.stroke();
       }
     });
     context.globalAlpha = 1;
-  }, [bounds, depthMode, neighborIds, points, selectedId, view]);
-
-  function screenToWorld(clientX, clientY) {
-    const rect = surfaceRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    return {
-      x: view.centerX - view.spanX / 2 + (x / rect.width) * view.spanX,
-      y: view.centerY + view.spanY / 2 - (y / rect.height) * view.spanY,
-      surfaceX: x,
-      surfaceY: y
-    };
-  }
+  }, [activeCluster, bounds, neighborIds, points, selectedId, view]);
 
   function findNearestPoint(clientX, clientY) {
     const rect = surfaceRef.current.getBoundingClientRect();
@@ -221,14 +254,14 @@ function MapCanvas({
     const yFraction = 1 - (event.clientY - rect.top) / rect.height;
     const anchorX = view.centerX - view.spanX / 2 + xFraction * view.spanX;
     const anchorY = view.centerY - view.spanY / 2 + yFraction * view.spanY;
-    const factor = event.deltaY > 0 ? 1.14 : 0.88;
-    const nextSpanX = clamp(view.spanX * factor, 0.35, (bounds.max_x - bounds.min_x) * 1.8);
+    const factor = event.deltaY > 0 ? 1.15 : 0.86;
+    const nextSpanX = clamp(view.spanX * factor, 0.3, (bounds.max_x - bounds.min_x) * 1.8);
     const nextSpanY = clamp(view.spanY * factor, 0.25, (bounds.max_y - bounds.min_y) * 1.8);
     setView({
       centerX: anchorX - (xFraction - 0.5) * nextSpanX,
       centerY: anchorY - (yFraction - 0.5) * nextSpanY,
       spanX: nextSpanX,
-      spanY: nextSpanY
+      spanY: nextSpanY,
     });
   }
 
@@ -236,156 +269,156 @@ function MapCanvas({
     dragRef.current = {
       startX: event.clientX,
       startY: event.clientY,
-      view
+      view,
     };
   }
 
   function handlePointerMove(event) {
     if (dragRef.current) {
       const rect = surfaceRef.current.getBoundingClientRect();
-      const deltaX = event.clientX - dragRef.current.startX;
-      const deltaY = event.clientY - dragRef.current.startY;
+      const deltaX = ((event.clientX - dragRef.current.startX) / rect.width) * dragRef.current.view.spanX;
+      const deltaY = ((event.clientY - dragRef.current.startY) / rect.height) * dragRef.current.view.spanY;
       setView({
-        centerX: dragRef.current.view.centerX - (deltaX / rect.width) * dragRef.current.view.spanX,
-        centerY: dragRef.current.view.centerY + (deltaY / rect.height) * dragRef.current.view.spanY,
-        spanX: dragRef.current.view.spanX,
-        spanY: dragRef.current.view.spanY
+        ...dragRef.current.view,
+        centerX: dragRef.current.view.centerX - deltaX,
+        centerY: dragRef.current.view.centerY + deltaY,
       });
       return;
     }
 
     const point = findNearestPoint(event.clientX, event.clientY);
-    if (!point) {
-      setHoverState(null);
-      onHoverPoint(null);
-      return;
-    }
-    const world = screenToWorld(event.clientX, event.clientY);
-    setHoverState({
-      point,
-      x: world.surfaceX + 18,
-      y: world.surfaceY + 18
-    });
+    setHoverState(
+      point
+        ? {
+            point,
+            x: event.clientX - surfaceRef.current.getBoundingClientRect().left + 16,
+            y: event.clientY - surfaceRef.current.getBoundingClientRect().top + 16,
+          }
+        : null,
+    );
     onHoverPoint(point);
   }
 
-  function handlePointerLeave() {
+  function handlePointerUp() {
     dragRef.current = null;
-    setHoverState(null);
-    onHoverPoint(null);
   }
 
-  function handlePointerUp(event) {
-    const dragging = dragRef.current;
-    dragRef.current = null;
-    if (!dragging) {
-      return;
-    }
-    const dragDistance = Math.hypot(event.clientX - dragging.startX, event.clientY - dragging.startY);
-    if (dragDistance < 6) {
-      const point = findNearestPoint(event.clientX, event.clientY);
-      if (point) {
-        onSelectPoint(point.image_id);
-      }
+  function handleClick(event) {
+    const point = findNearestPoint(event.clientX, event.clientY);
+    if (point) {
+      onSelectPoint(point.image_id);
     }
   }
+
+  const hoverTitle = hoverState?.point
+    ? labelMode === "simple"
+      ? hoverState.point.simple_label || hoverState.point.predicted_class
+      : hoverState.point.scientific_label || hoverState.point.predicted_class
+    : "";
 
   return (
-    <div className="galaxy-surface-wrap">
-      <div className="galaxy-map-toolbar">
-        <div className="galaxy-map-stats">
-          <span>{points.length.toLocaleString()} points loaded</span>
-          <span>{neighborIds.length ? `${neighborIds.length} neighbors highlighted` : "Hover for preview"}</span>
-        </div>
-        <div className="galaxy-map-controls">
-          <button className="ghost-button" onClick={() => setView(viewFromBounds(bounds))}>
-            Reset view
-          </button>
-          <button className="ghost-button" onClick={() => setDepthMode((value) => !value)}>
-            {depthMode ? "Depth on" : "Depth off"}
-          </button>
-        </div>
+    <div
+      className="galaxy-map-surface galaxy-map-surface--labs"
+      onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={() => {
+        dragRef.current = null;
+        setHoverState(null);
+        onHoverPoint(null);
+      }}
+      onClick={handleClick}
+      ref={surfaceRef}
+      role="presentation"
+    >
+      <canvas ref={canvasRef} />
+      <div className="galaxy-map-legend">
+        <span className="galaxy-legend-dot" />
+        Similar morphology cluster
+        <span className="galaxy-legend-dot galaxy-legend-dot--rare" />
+        Rare-object candidate
       </div>
-
-      <div
-        ref={surfaceRef}
-        className="galaxy-map-surface"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerLeave}
-        onWheel={handleWheel}
-        role="presentation"
-      >
-        <canvas ref={canvasRef} />
-
-        <div className="galaxy-map-legend">
-          <span className="galaxy-legend-dot" />
-          Morphology clusters
-          <span className="galaxy-legend-dot galaxy-legend-dot--rare" />
-          Rare objects
+      {hoverState ? (
+        <div className="galaxy-hover-card" style={{ left: hoverState.x, top: hoverState.y }}>
+          {hoverPreview?.image_url ? (
+            <img src={hoverPreview.image_url} alt={hoverState.point.image_id} />
+          ) : (
+            <div className="galaxy-hover-card__placeholder">Loading cutout...</div>
+          )}
+          <strong>{hoverTitle}</strong>
+          <span>{hoverState.point.source_field}</span>
+          <span>z {Number(hoverState.point.redshift || 0).toFixed(2)}</span>
         </div>
-
-        {hoverState ? (
-          <div className="galaxy-hover-card" style={{ left: hoverState.x, top: hoverState.y }}>
-            {hoverPreview?.image_url ? (
-              <img src={hoverPreview.image_url} alt={hoverState.point.image_id} />
-            ) : (
-              <div className="galaxy-hover-card__placeholder">Loading preview...</div>
-            )}
-            <strong>{hoverState.point.predicted_class}</strong>
-            <span>{hoverState.point.cluster_name}</span>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }
 
 export default function GalaxyMap() {
-  const requestRef = useRef(0);
   const hoverFetchRef = useRef(null);
+  const initialStateRef = useRef(readMapState());
+  const [manifest, setManifest] = useState(null);
   const [mapData, setMapData] = useState({
     total: 0,
     returned: 0,
     visible_clusters: [],
-    bounds: {
-      min_x: -10,
-      max_x: 10,
-      min_y: -6,
-      max_y: 6,
-      min_z: -2,
-      max_z: 2
-    },
-    points: []
+    bounds: { min_x: -5, max_x: 5, min_y: -5, max_y: 5, min_z: -2, max_z: 2 },
+    points: [],
   });
-  const [clusters, setClusters] = useState([]);
-  const [loadingMap, setLoadingMap] = useState(true);
-  const [mapError, setMapError] = useState("");
-  const [selectedId, setSelectedId] = useState("");
+  const [filters, setFilters] = useState({
+    clusterId: initialStateRef.current.clusterId,
+    morphology: initialStateRef.current.morphology,
+    instrument: initialStateRef.current.instrument,
+    filterBand: initialStateRef.current.filterBand,
+    sourceField: initialStateRef.current.sourceField,
+    redshiftMin: initialStateRef.current.redshiftMin,
+    redshiftMax: initialStateRef.current.redshiftMax,
+    magnitudeMax: initialStateRef.current.magnitudeMax,
+    search: initialStateRef.current.search,
+  });
+  const [labelMode, setLabelMode] = useState(initialStateRef.current.labelMode || "scientific");
+  const [selectedId, setSelectedId] = useState(initialStateRef.current.selectedId || "");
   const [selectedDetail, setSelectedDetail] = useState(null);
-  const [detailError, setDetailError] = useState("");
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [explanation, setExplanation] = useState("");
+  const [loadingMap, setLoadingMap] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const [mapError, setMapError] = useState("");
+  const [detailError, setDetailError] = useState("");
+  const [storyOpen, setStoryOpen] = useState(false);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [hoverCache, setHoverCache] = useState({});
-  const [focusedCluster, setFocusedCluster] = useState(null);
+  const [similarMode, setSimilarMode] = useState(false);
+
+  useEffect(() => {
+    fetchGalaxyMapManifest()
+      .then((data) => setManifest(data))
+      .catch((error) => setMapError(error.message));
+  }, []);
+
+  const query = useMemo(() => buildQuery(filters), [filters]);
 
   useEffect(() => {
     setLoadingMap(true);
-    Promise.all([fetchGalaxyMap({ limit: 6000 }), fetchGalaxyClusters()])
-      .then(([mapResponse, clusterResponse]) => {
-        setMapData(mapResponse);
-        setClusters(clusterResponse);
+    fetchGalaxyMap(query)
+      .then((data) => {
+        setMapData(data);
         setMapError("");
-        if (mapResponse.points.length > 0) {
-          setSelectedId(mapResponse.points[0].image_id);
+        if (!selectedId && data.points[0]) {
+          setSelectedId(data.points[0].image_id);
+        }
+        if (selectedId && !data.points.find((point) => point.image_id === selectedId) && data.points[0]) {
+          setSelectedId(data.points[0].image_id);
         }
       })
       .catch((error) => setMapError(error.message))
       .finally(() => setLoadingMap(false));
-  }, []);
+  }, [query, selectedId]);
+
+  useEffect(() => {
+    writeMapState({ ...filters, labelMode }, selectedId);
+  }, [filters, labelMode, selectedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -419,105 +452,186 @@ export default function GalaxyMap() {
     hoverFetchRef.current = window.setTimeout(() => {
       fetchGalaxyDetail(hoveredPoint.image_id)
         .then((detail) => {
-          setHoverCache((cache) => ({
-            ...cache,
-            [hoveredPoint.image_id]: detail
-          }));
+          setHoverCache((current) => ({ ...current, [hoveredPoint.image_id]: detail }));
         })
         .catch(() => undefined);
-    }, 120);
+    }, 100);
     return () => window.clearTimeout(hoverFetchRef.current);
   }, [hoverCache, hoveredPoint]);
 
-  function handleViewportChange(nextViewport) {
-    requestRef.current += 1;
-    const requestId = requestRef.current;
-    const zoom = nextViewport.zoom || 1;
-    const limit = zoom >= 2.4 ? 12000 : zoom >= 1.2 ? 8500 : 5000;
-    fetchGalaxyMap({
-      min_x: nextViewport.min_x,
-      max_x: nextViewport.max_x,
-      min_y: nextViewport.min_y,
-      max_y: nextViewport.max_y,
-      limit
-    })
-      .then((response) => {
-        if (requestId === requestRef.current) {
-          setMapData((previous) => ({
-            ...response,
-            bounds: previous.bounds
-          }));
-        }
-      })
-      .catch((error) => {
-        if (requestId === requestRef.current) {
-          setMapError(error.message);
-        }
-      });
-  }
-
-  function handleExploreCluster(cluster) {
-    const nextCluster = clusters.find((item) => item.cluster_id === cluster.cluster_id) || cluster;
-    setFocusedCluster({ ...nextCluster });
-  }
-
+  const clusters = manifest?.clusters || [];
+  const activeCluster = clusters.find((cluster) => String(cluster.cluster_id) === String(filters.clusterId || selectedDetail?.cluster_id || ""));
   const neighborIds = selectedDetail?.nearest_neighbors?.map((neighbor) => neighbor.image_id) || [];
+  const heroCluster = activeCluster || clusters[0];
   const hoverPreview = hoveredPoint ? hoverCache[hoveredPoint.image_id] : null;
-  const headlineCluster = focusedCluster || clusters[0];
-  const visibleClusterCount = mapData.visible_clusters.length || clusters.length;
+
+  function handleFilterChange(key, value) {
+    if (key === "labelMode") {
+      setLabelMode(value);
+      return;
+    }
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
+  function handleReset() {
+    setFilters({
+      clusterId: "",
+      morphology: "",
+      instrument: "",
+      filterBand: "",
+      sourceField: "",
+      redshiftMin: "",
+      redshiftMax: "",
+      magnitudeMax: "",
+      search: "",
+    });
+    setLabelMode("scientific");
+    setSimilarMode(false);
+  }
+
+  async function handleShare() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      window.prompt("Copy this view URL", window.location.href);
+    }
+  }
+
+  function handleSelectCluster(clusterId) {
+    setFilters((current) => ({ ...current, clusterId: String(clusterId), search: "" }));
+    setSimilarMode(false);
+  }
+
+  function handleFindSimilar() {
+    if (!selectedDetail) {
+      return;
+    }
+    setSimilarMode(true);
+    setFilters((current) => ({
+      ...current,
+      clusterId: String(selectedDetail.cluster_id),
+      morphology: "",
+      search: "",
+    }));
+  }
+
+  const heroTitle = heroCluster
+    ? labelMode === "simple"
+      ? heroCluster.plain_cluster_name || heroCluster.cluster_name
+      : heroCluster.cluster_name
+    : "Galaxy Embedding Map";
+  const heroSummary = heroCluster
+    ? labelMode === "simple"
+      ? heroCluster.plain_summary || heroCluster.summary
+      : heroCluster.summary
+    : manifest?.subtitle;
 
   return (
-    <main className="single-column galaxy-page">
-      <section className="panel panel--hero galaxy-hero">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Galaxy Embedding Map</p>
-            <h2>Google Maps for morphology space.</h2>
-          </div>
-          <div className="snapshot-grid galaxy-hero__stats">
-            <article className="snapshot-card">
-              <span>Galaxies loaded</span>
-              <strong>{mapData.total.toLocaleString()}</strong>
-              <p>Embedding points served from the API with viewport-aware sampling.</p>
-            </article>
-            <article className="snapshot-card">
-              <span>Clusters visible</span>
-              <strong>{visibleClusterCount}</strong>
-              <p>Color-coded morphology families ready for cluster exploration.</p>
-            </article>
-            <article className="snapshot-card">
-              <span>Rare objects</span>
-              <strong>{clusters.find((cluster) => cluster.cluster_id === -1)?.count || "Live"}</strong>
-              <p>Low-density outliers are highlighted for quick discovery demos.</p>
-            </article>
+    <main className="single-column galaxy-labs-page">
+      <LabsNav />
+
+      <section className="panel panel--hero galaxy-labs-hero">
+        <div className="galaxy-labs-hero__copy">
+          <p className="eyebrow">Ohnita Labs</p>
+          <h2>Galaxy Embedding Map</h2>
+          <p className="home-intro__lede">
+            Explore the early universe through AI-generated visual similarity maps. Each point is a galaxy, each cluster is a morphology family, and each detail panel turns embedding space into something readable.
+          </p>
+          <div className="galaxy-labs-hero__actions">
+            <button
+              className="primary-link"
+              type="button"
+              onClick={() => document.getElementById("galaxy-map-experience")?.scrollIntoView({ behavior: "smooth" })}
+            >
+              Explore the Map
+            </button>
+            <button className="ghost-button" type="button" onClick={() => setStoryOpen(true)}>
+              Open story mode
+            </button>
           </div>
         </div>
-        <p className="home-intro__lede">
-          Pan through galaxy morphology space, dive into tight visual families, and open any point
-          for its nearest neighbors, metadata, and a local-LLM explanation grounded in cluster
-          context. The app reads a real Parquet artifact when available and falls back to a
-          deterministic demo catalog so the module is always ready to show.
-        </p>
-        {headlineCluster ? (
-          <div className="galaxy-headline-cluster">
-            <span className="eyebrow">Featured cluster</span>
-            <h3>{headlineCluster.cluster_name}</h3>
-            <p>{headlineCluster.summary}</p>
-          </div>
-        ) : null}
+        <div className="galaxy-labs-hero__stats">
+          <article className="snapshot-card">
+            <span>Galaxies in sample</span>
+            <strong>{manifest?.total_galaxies?.toLocaleString() || mapData.total.toLocaleString()}</strong>
+            <p>Interactive JWST-style morphology sample sized for smooth 10k+ point exploration.</p>
+          </article>
+          <article className="snapshot-card">
+            <span>Featured cluster</span>
+            <strong>{heroTitle}</strong>
+            <p>{heroSummary}</p>
+          </article>
+          <article className="snapshot-card">
+            <span>Current view</span>
+            <strong>{mapData.returned.toLocaleString()} points</strong>
+            <p>{similarMode ? "Similar-galaxy spotlight is active." : "Filters and selection are shareable via the URL."}</p>
+          </article>
+        </div>
       </section>
 
-      <section className="galaxy-layout">
-        <div className="galaxy-map-column">
-          <section className="panel galaxy-map-panel">
+      <section className="panel galaxy-guide-panel">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">How to use this tool</p>
+            <h2>A map for comparison, not just a list of objects</h2>
+          </div>
+        </div>
+        <div className="guide-grid">
+          <article className="guide-card">
+            <div className="guide-card__copy">
+              <h3>How to use it</h3>
+            </div>
+            <p>
+              Pan, zoom, filter, and click through clusters to compare galaxies, then open the
+              detail drawer to see metadata, neighbors, and explanations for the selected object.
+            </p>
+          </article>
+          <article className="guide-card">
+            <div className="guide-card__copy">
+              <h3>What it is doing</h3>
+            </div>
+            <p>
+              The map places galaxies near other visually similar galaxies in embedding space, so
+              clusters represent shared morphology and outliers surface rarer structures.
+            </p>
+          </article>
+          <article className="guide-card">
+            <div className="guide-card__copy">
+              <h3>Why it matters</h3>
+            </div>
+            <p>
+              This makes it easier to see relationships that are hard to notice in a table, helping
+              visitors learn by comparison, neighborhood, and visual pattern.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <FilterBar
+        manifest={manifest}
+        filters={filters}
+        labelMode={labelMode}
+        onChange={handleFilterChange}
+        onReset={handleReset}
+        onShare={handleShare}
+        onOpenStory={() => setStoryOpen(true)}
+      />
+
+      <section className="galaxy-labs-layout" id="galaxy-map-experience">
+        <div className="galaxy-labs-main">
+          <section className="panel galaxy-map-panel galaxy-map-panel--labs">
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">Interactive map</p>
-                <h2>Explore the embedding manifold</h2>
+                <h2>AI-assisted exploration of early-universe structure</h2>
               </div>
               <div className="galaxy-map-inline-stats">
-                <span>{mapData.returned.toLocaleString()} rendered</span>
-                <span>{loadingMap ? "Syncing view..." : "Live viewport queries"}</span>
+                <span>{loadingMap ? "Loading points..." : `${mapData.returned.toLocaleString()} rendered`}</span>
+                <span>{mapData.total.toLocaleString()} matched</span>
+                <span>{clusters.length} morphology clusters</span>
               </div>
             </div>
             {mapError ? <p className="error-copy">{mapError}</p> : null}
@@ -526,50 +640,46 @@ export default function GalaxyMap() {
               bounds={mapData.bounds}
               selectedId={selectedId}
               neighborIds={neighborIds}
-              focusedCluster={focusedCluster}
+              activeCluster={activeCluster}
               hoverPreview={hoverPreview}
+              labelMode={labelMode}
               onHoverPoint={setHoveredPoint}
-              onSelectPoint={setSelectedId}
-              onViewportChange={handleViewportChange}
+              onSelectPoint={(imageId) => {
+                setSelectedId(imageId);
+                setSimilarMode(false);
+              }}
             />
           </section>
 
-          <section className="panel galaxy-cluster-panel">
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">Explore cluster mode</p>
-                <h2>Jump straight into the strongest structures</h2>
-              </div>
-            </div>
-            <div className="galaxy-cluster-grid">
-              {clusters.slice(0, 8).map((cluster) => (
-                <button
-                  key={cluster.cluster_id}
-                  className={`galaxy-cluster-card${focusedCluster?.cluster_id === cluster.cluster_id ? " is-active" : ""}`}
-                  onClick={() => handleExploreCluster(cluster)}
-                >
-                  <div>
-                    <span className="galaxy-cluster-card__dot" style={{ background: clusterColor(cluster.cluster_id) }} />
-                    <strong>{cluster.cluster_name}</strong>
-                  </div>
-                  <p>{cluster.summary}</p>
-                  <span>{cluster.count.toLocaleString()} members</span>
-                </button>
-              ))}
-            </div>
-          </section>
+          <ClusterSummaryPanel
+            clusters={clusters.slice(0, 8)}
+            activeClusterId={activeCluster?.cluster_id}
+            labelMode={labelMode}
+            onSelectCluster={handleSelectCluster}
+            onSelectGalaxy={(imageId) => {
+              setSelectedId(imageId);
+              setSimilarMode(false);
+            }}
+          />
         </div>
 
-        <GalaxyDetailPanel
+        <GalaxyDetailDrawer
           detail={selectedDetail}
           explanation={explanation}
           loading={loadingDetail}
           loadingExplanation={loadingExplanation}
           error={detailError}
-          onSelectGalaxy={setSelectedId}
-          onExploreCluster={handleExploreCluster}
+          labelMode={labelMode}
+          similarModeActive={similarMode}
+          onSelectGalaxy={(imageId) => {
+            setSelectedId(imageId);
+            setSimilarMode(false);
+          }}
+          onFindSimilar={handleFindSimilar}
         />
       </section>
+
+      <StoryModeOverlay open={storyOpen} steps={manifest?.story_steps || []} onClose={() => setStoryOpen(false)} />
     </main>
   );
 }

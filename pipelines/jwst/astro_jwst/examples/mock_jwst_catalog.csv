@@ -1,0 +1,9 @@
+image_id,scientific_label,simple_label,source_field,observation_program,instrument,filter_band,redshift,magnitude,confidence,rarity_score,ra,dec
+jwst-sample-0001,Grand design spiral galaxy,Large spiral galaxy,CEERS,CEERS pilot,NIRCam,F200W,1.12,24.1,0.92,0.18,214.1203,52.9112
+jwst-sample-0002,Barred spiral galaxy,Barred spiral,COSMOS-Web,COSMOS-Web mosaic,NIRCam,F277W,1.74,24.8,0.89,0.21,149.9213,2.1132
+jwst-sample-0003,Elliptical galaxy,Smooth elliptical,JADES,JADES deep field,NIRCam,F444W,2.83,25.7,0.87,0.19,53.1332,-27.8021
+jwst-sample-0004,Clumpy star-forming galaxy,Clumpy young galaxy,JADES,JADES deep field,NIRCam,F277W,5.21,27.2,0.83,0.44,53.1432,-27.7984
+jwst-sample-0005,Compact blue galaxy,Compact blue galaxy,JADES,JADES deep field,NIRCam,F150W,6.04,28.0,0.79,0.48,53.1444,-27.8011
+jwst-sample-0006,Disturbed merger system,Merging galaxies,GLASS,GLASS lensing field,NIRCam,F356W,4.14,26.6,0.81,0.55,3.5904,-30.4002
+jwst-sample-0007,Lensed arc candidate,Lensing arc,SMACS 0723,SMACS 0723 lensing field,NIRCam,F200W,7.82,28.6,0.71,0.77,110.7442,-73.4583
+jwst-sample-0008,Compact quiescent galaxy,Compact quiet galaxy,UNCOVER,UNCOVER deep field,NIRCam,F356W,6.94,28.1,0.74,0.52,64.0302,-24.0741

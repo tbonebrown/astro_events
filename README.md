@@ -1,27 +1,46 @@
 # Astro Event Intelligence
 
-Astro Event Intelligence is an astronomy MVP intended to live at `ohnita.com` as a single public
-homepage with path-based app routes such as `/transients`, `/transients/reports/latest`, and
-`/tess`.
+Astro Event Intelligence powers `ohnita.com` as a single-origin astronomy experience with multiple public modules, including a new flagship Labs feature at `/labs/galaxy-map`.
 
-The root homepage acts as a launcher for the hosted tools, with buttons that send visitors into
-each module without changing domains.
+## What is in this repo
 
-The stack currently includes two complementary pipelines:
+- `services/web`: React + Vite frontend for the Ohnita homepage, feeds, reports, and Labs pages.
+- `services/api`: FastAPI backend, API routes, explanation services, and static asset serving.
+- `pipelines/tess`: TESS anomaly detection pipeline.
+- `pipelines/transients`: transient ranking and reporting pipeline.
+- `pipelines/jwst/astro_jwst`: Galaxy Embedding Map artifact builder for synthetic and JWST-style catalogs.
+- `ops/`: deployment helpers for `systemd`, Cloudflare Tunnel, Docker, and Windows workstation automation.
 
-- TESS light-curve anomaly detection for unusual stellar variability.
-- Gaia-first transient alert triage for newly changing sky events, ranked for citizen astronomers.
+## Galaxy Embedding Map
 
-## Architecture
+Public routes:
 
-- `pipelines/tess`: nightly ingest, cleaning, feature extraction, anomaly scoring, artifact export, and sync from the 5090 workstation.
-- `pipelines/transients`: nightly Gaia alert ingest, enrichment, scoring, summary generation, export, and sync from the 5090 workstation.
-- `services/api`: FastAPI backend, Postgres ingestion, candidate APIs, nightly report generation, and React asset serving on the R9700 server.
-- `services/web`: React + Vite public frontend for the root launcher, transient feeds, candidate detail pages, nightly reports, and TESS watchlist views.
+- `/labs/galaxy-map`
+- `/labs/galaxy-map/about`
+- `/labs/galaxy-map/data`
+
+The app is designed to feel native to Ohnita instead of like a separate science microsite. It reuses the current visual language:
+
+- dark-only gradient backgrounds with soft glows
+- rounded glass panels and pill controls
+- Avenir-style display typography
+- restrained blue, lime, and warm coral accents
+- concise, guided copy rather than academic or sci-fi-heavy language
+
+Core features:
+
+- full-screen Labs hero with CTA
+- interactive 2D embedding map for 10k+ points
+- hover previews and detail drawer
+- redshift, morphology, magnitude, cluster, band, and source-field filters
+- cluster summaries with representative thumbnails
+- approachable story mode
+- shareable URL state
+- scientific vs simplified labels
 
 ## Quick start
 
-1. Create a virtual environment and install Python dependencies:
+### 1. Python environment
 
 ```bash
 python3 -m venv .venv
@@ -29,101 +48,207 @@ source .venv/bin/activate
 python3 -m pip install -e .[dev]
 ```
 
-2. Install frontend dependencies:
+Optional extras for richer pipeline work:
+
+```bash
+python3 -m pip install -e .[ml]
+```
+
+### 2. Frontend dependencies
 
 ```bash
 cd services/web
 npm install
 ```
 
-3. Copy `.env.example` to `.env` and adjust the database and inference settings.
-4. Run the backend:
+### 3. Environment
+
+Copy `.env.example` to `.env` and adjust the paths you want to use. The galaxy map defaults to:
+
+- data root: `./var/data`
+- galaxy artifacts: `./var/data/galaxy_map`
+- generated thumbnails: `./var/data/artifacts/galaxy_map/thumbnails`
+
+### 4. Build galaxy-map artifacts
+
+Self-contained sample:
+
+```bash
+astro-jwst-galaxy-map --data-dir ./var/data --source synthetic --limit 12500
+```
+
+Optional thumbnail precompute:
+
+```bash
+astro-jwst-galaxy-map --data-dir ./var/data --source synthetic --limit 12500 --precompute-thumbnails
+```
+
+### 5. Run the backend
 
 ```bash
 uvicorn services.api.main:app --reload --proxy-headers --forwarded-allow-ips='*'
 ```
 
-5. Run the frontend during development:
+### 6. Run the frontend
 
 ```bash
 cd services/web
 npm run dev
 ```
 
-6. Run the synthetic nightly pipelines:
+The Vite dev server proxies `/api`, `/assets`, and `/artifacts` to FastAPI.
+
+## Tool guide
+
+### How to use the tools
+
+Install the project with `python3 -m pip install -e .[dev]` from the repo root, then run any CLI tool by name. Use `--help` to inspect options, start with the synthetic modes for local testing, and re-run a tool whenever its source data changes.
+
+### What the tools are doing
+
+- `astro-jwst-galaxy-map` builds the artifact files and thumbnails used by the Labs galaxy map.
+- `astro-tess-nightly` generates a nightly TESS candidate export for anomaly review.
+- `astro-transients-nightly` generates a nightly transient candidate export for the feed and reports.
+- `astro-api-ingest` and `astro-api-ingest-transients` load those exports into the API database so the app can query them.
+- `astro-api-refresh-events` refreshes the celestial-events catalog that powers the sky-feed style experiences.
+
+### Why it matters
+
+These tools are the handoff points between raw astronomy data, generated artifacts, and the user-facing app. If you skip a build, ingest, or refresh step, the frontend can still run, but it will be missing fresh data, map assets, or event content.
+
+## Galaxy pipeline
+
+The galaxy-map artifact builder writes:
+
+- `var/data/galaxy_map/galaxies.parquet`
+- `var/data/galaxy_map/embeddings.npy`
+- `var/data/galaxy_map/umap_coordinates.parquet`
+- `var/data/galaxy_map/cluster_summaries.json`
+- `var/data/artifacts/galaxy_map/thumbnails/`
+
+### Synthetic mode
+
+`synthetic` mode creates a deterministic JWST-inspired sample with:
+
+- morphology families
+- approximate redshift and magnitude metadata
+- embedding vectors
+- 2D/3D map coordinates
+- cluster summaries
+- on-demand SVG thumbnails
+
+This is the default because it keeps the full Ohnita Labs experience runnable with no network dependency.
+
+### Catalog mode
+
+`catalog` mode ingests your own CSV or Parquet table:
 
 ```bash
-astro-tess-nightly --synthetic --limit 12 --export-root ./exports
-astro-api-ingest --export-dir ./exports/latest
-astro-transients-nightly --synthetic --limit 12 --export-root ./exports
-astro-api-ingest-transients --export-dir ./exports/transients/latest
+astro-jwst-galaxy-map \
+  --data-dir ./var/data \
+  --source catalog \
+  --catalog-path ./path/to/jwst_catalog.csv \
+  --limit 8000 \
+  --overwrite
 ```
 
-### Windows workstation quick start
+Recommended columns:
 
-If you are running the pipelines on the Windows 5090 workstation, the repository now includes
-PowerShell helpers under `ops/windows`:
+- `image_id`
+- `scientific_label`
+- `simple_label`
+- `source_field`
+- `observation_program`
+- `instrument`
+- `filter_band`
+- `redshift`
+- `magnitude`
+- `confidence`
+- `rarity_score`
+- `ra`
+- `dec`
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -e .[dev]
-Copy-Item .env.example .env
-powershell -ExecutionPolicy Bypass -File .\ops\windows\seed_demo_data.ps1
-powershell -ExecutionPolicy Bypass -File .\ops\windows\register_tasks.ps1
-```
+The repo includes a tiny example at [mock_jwst_catalog.csv](/Users/babo/Documents/GitHub/astro_events/pipelines/jwst/astro_jwst/examples/mock_jwst_catalog.csv).
 
-`seed_demo_data.ps1` runs the first synthetic publish so the local API has content immediately.
-`register_tasks.ps1` creates an `Astro Events API` scheduled task that starts the API on logon.
-`publish_latest_to_server.ps1` copies the current `latest` TESS and transient export trees from the
-workstation to the Linux server runtime path at `tbone@100.81.22.102:~/astro_events_runtime/exports`.
-`register_nightly_task.ps1` creates a `3:00 AM` scheduled task that runs transients nightly, publishes
-them to the server, and runs TESS only when `TESS_TARGET_FILE` exists in `.env` or at
-`data\tic_targets.csv`.
-`refresh_tess_targets.ps1` can download that CSV automatically before the nightly run when
-`TESS_TARGET_URL` is set in `.env`, or copy it from the server first when
-`TESS_TARGET_SERVER_PATH` is set to something like
-`tbone@100.81.22.102:astro_events_runtime/config/tic_targets.csv`.
+## How to swap in real JWST data
 
-### Automated TESS target generation
+The simplest path is:
 
-The repository also includes a server-side generator for `tic_targets.csv`. It queries the official
-MAST TIC or CTL services, writes the result to `TESS_TARGET_OUTPUT`, and can be scheduled before the
-workstation's `3:00 AM` run:
+1. Export or assemble a small JWST / MAST catalog with the columns above.
+2. Add cutout or thumbnail URLs during your metadata prep step if you have them.
+3. Run `astro-jwst-galaxy-map --source catalog --catalog-path ... --overwrite`.
+4. Restart the API so it serves the new artifacts.
+
+The artifact contract stays the same, so the public UI does not need to change when you replace the synthetic sample with real data.
+
+## LLM explanations
+
+The detail drawer already supports natural-language explanations through the existing local inference client.
+
+Useful environment variables:
+
+- `LOCAL_INFERENCE_URL`
+- `LOCAL_INFERENCE_MODEL`
+- `LOCAL_INFERENCE_PROVIDER`
+
+For a llama.cpp-compatible endpoint, use the OpenAI-compatible mode if your gateway exposes chat-completions style responses:
+
+- `LOCAL_INFERENCE_PROVIDER=openai_compatible`
+
+## Tests and verification
+
+Backend:
 
 ```bash
-source .venv/bin/activate
-python3 ./scripts/generate_tess_targets.py
+pytest tests/test_galaxy_map_api.py
 ```
 
-The default configuration uses the curated `CTL` catalog and writes a target list with a `tic_id`
-column plus helpful metadata. You can tune the generated target list using environment variables such
-as `TESS_TARGET_LIMIT`, `TESS_TARGET_MIN_TMAG`, `TESS_TARGET_MAX_TMAG`, `TESS_TARGET_MIN_TEFF`,
-`TESS_TARGET_MAX_TEFF`, `TESS_TARGET_MIN_LOGG`, and `TESS_TARGET_MAX_LOGG`.
+Frontend:
+
+```bash
+cd services/web
+npm test
+npm run build
+```
 
 ## Deployment notes
 
-- The public app is intended to run on the R9700 server behind Cloudflare Tunnel.
-- The transient module is Gaia-first in v1 and defers raw ZTF/Rubin difference imaging to a later phase.
-- The public entrypoint is the root hostname `ohnita.com`.
-- Individual app views are published as SPA paths under the same origin, including `/transients`,
-  `/transients/reports/latest`, and `/tess`.
-- Postgres is the application system of record; Parquet exports remain the immutable ML artifact layer.
-- The repository includes example `systemd`, Docker, and Cloudflare Tunnel scaffolding under `ops/`.
-- The server-side ingest path now includes a transient ingest script and example `systemd` timer/service.
+The app is intended to run behind Cloudflare Tunnel at `ohnita.com`.
 
-### Minimum steps to make the site live
-
-1. Build the frontend on the server:
+### Server build steps
 
 ```bash
-cd /srv/astro_events/services/web
+cd /srv/astro_events
+source .venv/bin/activate
+python3 -m pip install -e .[dev]
+astro-jwst-galaxy-map --data-dir ./var/data --source synthetic --limit 12500
+cd services/web
 npm install
 npm run build
 ```
 
-2. Install Python dependencies and create `.env` from `.env.example`.
-3. Start the API on the server so it listens on `127.0.0.1:8000`.
-4. Install the Cloudflare tunnel config from `ops/cloudflare/cloudflared.example.yml` and point it at your real tunnel credentials file.
-5. In Cloudflare DNS/Tunnel routing, map `ohnita.com` to that tunnel.
-6. Start `cloudflared` and verify `http://127.0.0.1:8000/api/health` works locally on the server before checking the public domain.
-7. In Cloudflare, enable an edge redirect so `http://ohnita.com/...` is upgraded to HTTPS before the request reaches the app.
+Then start the API so it serves:
+
+- `index.html` from `services/web/dist`
+- static bundle assets from `services/web/dist/assets`
+- generated thumbnails from `/artifacts`
+
+### Minimum production checklist
+
+1. Build the frontend bundle.
+2. Generate or ingest galaxy-map artifacts.
+3. Confirm `http://127.0.0.1:8000/api/health` works locally.
+4. Confirm `http://127.0.0.1:8000/api/galaxy-map/manifest` returns data.
+5. Put FastAPI behind Cloudflare Tunnel or your preferred reverse proxy.
+6. Keep HTTPS redirect and HSTS enabled for `ohnita.com`.
+
+## Legacy modules
+
+The repo still includes the original public Ohnita experiences:
+
+- transient feed
+- nightly transient report
+- TESS anomaly watchlist
+- sky-feed / celestial events guide
+
+The Galaxy Embedding Map now sits alongside them as the flagship Labs showcase.

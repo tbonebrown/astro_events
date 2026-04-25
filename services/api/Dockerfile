@@ -16,6 +16,7 @@ COPY pyproject.toml README.md ./
 COPY services/api ./services/api
 COPY pipelines/tess ./pipelines/tess
 COPY pipelines/transients ./pipelines/transients
+COPY pipelines/jwst ./pipelines/jwst
 COPY --from=web-build /web/dist ./services/web/dist
 
 RUN python -m pip install --upgrade pip && \

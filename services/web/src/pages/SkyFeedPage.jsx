@@ -392,6 +392,20 @@ export default function SkyFeedPage() {
             <h2>Celestial Events Feed</h2>
           </div>
         </div>
+        <div className="sky-guide-grid">
+          <article className="sky-guide-card">
+            <span>How to use it</span>
+            <p>Filter the feed for the next few nights, pick an event from the timeline or cards, and save the ones you want to revisit before observing.</p>
+          </article>
+          <article className="sky-guide-card">
+            <span>What it is doing</span>
+            <p>The app combines your location, event timing, and viewing quality to rank celestial events you can realistically see from your sky.</p>
+          </article>
+          <article className="sky-guide-card">
+            <span>Why it matters</span>
+            <p>It turns a long list of astronomy events into a practical observing guide, so beginners and repeat visitors both know what is worth stepping outside for.</p>
+          </article>
+        </div>
         <div className="sky-filters__controls">
           {Object.entries(FILTERS).map(([key, options]) => (
             <label key={key} className="sky-select">

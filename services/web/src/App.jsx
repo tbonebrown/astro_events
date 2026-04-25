@@ -7,6 +7,9 @@ import {
   fetchTransients
 } from "./api";
 import GalaxyMap from "./components/GalaxyMap";
+import LabsGalaxyMapAboutPage from "./pages/LabsGalaxyMapAboutPage";
+import LabsGalaxyMapDataPage from "./pages/LabsGalaxyMapDataPage";
+import PapersPage from "./pages/PapersPage";
 import SkyFeedPage from "./pages/SkyFeedPage";
 
 function readRoute() {
@@ -24,11 +27,23 @@ function readRoute() {
   if (parts[0] === "tess") {
     return { page: "tess" };
   }
+  if (parts[0] === "labs" && parts[1] === "galaxy-map" && parts[2] === "about") {
+    return { page: "galaxy-map-about" };
+  }
+  if (parts[0] === "labs" && parts[1] === "galaxy-map" && parts[2] === "data") {
+    return { page: "galaxy-map-data" };
+  }
+  if (parts[0] === "labs" && parts[1] === "galaxy-map") {
+    return { page: "galaxy-map" };
+  }
   if (parts[0] === "galaxy-map") {
     return { page: "galaxy-map" };
   }
   if (parts[0] === "sky-feed") {
     return { page: "sky-feed" };
+  }
+  if (parts[0] === "papers") {
+    return { page: "papers" };
   }
   if (parts[0] === "transients") {
     return { page: "feed" };
@@ -39,6 +54,33 @@ function readRoute() {
 function setRoute(path) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function routeTitle(route, selectedTransient) {
+  if (route.page === "galaxy-map") {
+    return "Galaxy Map | Ohnita";
+  }
+  if (route.page === "sky-feed") {
+    return "Sky Feed | Ohnita";
+  }
+  if (route.page === "papers") {
+    return "Recent Papers | Ohnita";
+  }
+  if (route.page === "tess") {
+    return "TESS Module | Ohnita";
+  }
+  if (route.page === "feed") {
+    return "Transient Feed | Ohnita";
+  }
+  if (route.page === "report") {
+    return "Nightly Report | Ohnita";
+  }
+  if (route.page === "detail") {
+    return selectedTransient?.external_alert_id
+      ? `${selectedTransient.external_alert_id} | Ohnita`
+      : "Transient Alert | Ohnita";
+  }
+  return "Ohnita";
 }
 
 export function importanceLabel(score, noveltyFlag) {
@@ -84,6 +126,36 @@ function ProjectCard({ eyebrow, title, description, highlights, cta, onOpen }) {
       <button className="ghost-button" onClick={onOpen}>
         {cta}
       </button>
+    </article>
+  );
+}
+
+function GuideCard({ eyebrow, title, howToUse, whatItDoes, whyItMatters, cta, onOpen }) {
+  return (
+    <article className="guide-card">
+      <div className="guide-card__copy">
+        <p className="eyebrow">{eyebrow}</p>
+        <h3>{title}</h3>
+      </div>
+      <dl className="guide-card__grid">
+        <div>
+          <dt>How to use it</dt>
+          <dd>{howToUse}</dd>
+        </div>
+        <div>
+          <dt>What it is doing</dt>
+          <dd>{whatItDoes}</dd>
+        </div>
+        <div>
+          <dt>Why it matters</dt>
+          <dd>{whyItMatters}</dd>
+        </div>
+      </dl>
+      {cta ? (
+        <button className="ghost-button" onClick={onOpen}>
+          {cta}
+        </button>
+      ) : null}
     </article>
   );
 }
@@ -203,8 +275,8 @@ function HomeView({
         <div className="snapshot-grid" aria-label="Project snapshot">
           <article className="snapshot-card">
             <span>Projects on site</span>
-            <strong>4</strong>
-            <p>Four ways to learn, compare, and follow what the sky is doing.</p>
+            <strong>5</strong>
+            <p>Five ways to learn, compare, and follow what the sky is doing.</p>
           </article>
           <article className="snapshot-card">
             <span>Transient watchlist</span>
@@ -294,6 +366,18 @@ function HomeView({
             onOpen={() => onOpenRoute("/sky-feed")}
           />
           <ProjectCard
+            eyebrow="Research digest"
+            title="Recent papers"
+            description="A curated top 10 list of new astronomy papers with quick abstracts, plain-language context, and direct paper links for deeper reading."
+            highlights={[
+              "Recent astro-ph papers selected for broad curiosity",
+              "Fast summaries that explain what each paper is trying to learn",
+              "Direct arXiv and PDF links for source-first reading"
+            ]}
+            cta="Read paper picks"
+            onOpen={() => onOpenRoute("/papers")}
+          />
+          <ProjectCard
             eyebrow="Embedding intelligence"
             title="Galaxy Embedding Map"
             description="A morphology atlas for curious browsing. The map places galaxies in learned embedding space so visitors can move through clusters, compare similar systems, and open plain-language explanations."
@@ -303,7 +387,7 @@ function HomeView({
               "Click-through detail with image, metadata, and local-LLM copy"
             ]}
             cta="Launch galaxy map"
-            onOpen={() => onOpenRoute("/galaxy-map")}
+            onOpen={() => onOpenRoute("/labs/galaxy-map")}
           />
         </div>
       </section>
@@ -339,6 +423,64 @@ function HomeView({
             <li>Explore the galaxy map when you want to compare shapes and neighborhoods</li>
           </ul>
         </article>
+      </section>
+
+      <section className="home-section">
+        <div className="section-copy">
+          <p className="eyebrow">Visitor guide</p>
+          <h2>What to do in each app, what it is doing, and why it matters.</h2>
+          <p>
+            Each section below is built for a different kind of looking. If you are new to the site,
+            treat this as a field guide for where to begin and what each tool is helping you see.
+          </p>
+        </div>
+        <div className="guide-grid">
+          <GuideCard
+            eyebrow="Fast change"
+            title="Transient feed"
+            howToUse="Scan the ranked cards from top to bottom, then open any candidate that looks unusual or promising for the full evidence view."
+            whatItDoes="The feed turns alert streams into a smaller watchlist by scoring recent brightness changes, summarizing them, and surfacing the strongest follow-up leads first."
+            whyItMatters="Raw alerts arrive faster than most people can review them. This feed helps visitors notice the events most likely to reward a closer look."
+            cta="Open transient feed"
+            onOpen={() => onOpenRoute("/transients")}
+          />
+          <GuideCard
+            eyebrow="Daily context"
+            title="Nightly report"
+            howToUse="Read this page when you want the shortest path to the big picture before drilling into individual candidates."
+            whatItDoes="The report converts the latest scoring run into a readable briefing that pulls patterns, standouts, and handoff context into one place."
+            whyItMatters="Not everyone wants to start with a table of alerts. The report makes the pipeline understandable at a glance."
+            cta="Read nightly report"
+            onOpen={() => onOpenRoute("/transients/reports/latest")}
+          />
+          <GuideCard
+            eyebrow="Slow signals"
+            title="TESS anomaly watchlist"
+            howToUse="Use the watchlist when you want to compare unusual light curves and explore strange long-term behavior instead of immediate sky alerts."
+            whatItDoes="This module ranks light-curve candidates by how different their variability looks from more typical TESS patterns."
+            whyItMatters="Some of the most interesting discoveries are not sudden explosions. This view helps visitors learn from slower, subtler changes."
+            cta="Open TESS module"
+            onOpen={() => onOpenRoute("/tess")}
+          />
+          <GuideCard
+            eyebrow="Step outside"
+            title="Sky feed"
+            howToUse="Filter by event type, time window, or visibility, then save the events you want to come back to before you head outside."
+            whatItDoes="The feed combines your location, timing, and event visibility to rank what is actually worth watching from where you are."
+            whyItMatters="Astronomy becomes more approachable when the site tells you not just what exists, but what you can realistically see."
+            cta="Open sky feed"
+            onOpen={() => onOpenRoute("/sky-feed")}
+          />
+          <GuideCard
+            eyebrow="Pattern finding"
+            title="Galaxy map"
+            howToUse="Pan, zoom, filter, and click around the map to compare similar galaxies, move through clusters, and open explanations for anything that catches your eye."
+            whatItDoes="The map arranges galaxies by learned visual similarity so nearby points tend to share structure, morphology, or observational traits."
+            whyItMatters="Lists are good for ranking, but maps are better for comparison. This tool helps visitors see families, outliers, and relationships across a larger sample."
+            cta="Launch galaxy map"
+            onOpen={() => onOpenRoute("/labs/galaxy-map")}
+          />
+        </div>
       </section>
     </main>
   );
@@ -539,6 +681,10 @@ export default function App() {
       .finally(() => setLoadingDetail(false));
   }, [route]);
 
+  useEffect(() => {
+    document.title = routeTitle(route, selectedTransient);
+  }, [route, selectedTransient]);
+
   return (
     <div className="app-shell">
       <div className="hero-glow hero-glow--one" />
@@ -553,14 +699,16 @@ export default function App() {
             interactive views so visitors can explore what is changing, understand why it matters,
             and keep following their curiosity.
           </p>
+          <p className="network-note">Part of the Ohkwali network.</p>
         </div>
         <nav className="nav-tabs" aria-label="Primary">
           <button onClick={() => setRoute("/")}>Home</button>
           <button onClick={() => setRoute("/transients")}>Transient feed</button>
           <button onClick={() => setRoute("/sky-feed")}>Sky feed</button>
+          <button onClick={() => setRoute("/papers")}>Recent papers</button>
           <button onClick={() => setRoute("/transients/reports/latest")}>Nightly report</button>
           <button onClick={() => setRoute("/tess")}>TESS module</button>
-          <button onClick={() => setRoute("/galaxy-map")}>Galaxy map</button>
+          <button onClick={() => setRoute("/labs/galaxy-map")}>Galaxy map</button>
         </nav>
       </header>
 
@@ -604,6 +752,13 @@ export default function App() {
             </div>
           </section>
           <aside className="side-column">
+            <GuideCard
+              eyebrow="How to use this page"
+              title="Follow the live transient watchlist"
+              howToUse="Start at the top-ranked cards, open the candidates that look most interesting, and use the report button when you want the broader nightly summary."
+              whatItDoes="This feed filters a larger alert stream into a smaller ranked list with summaries, classifications, and score context."
+              whyItMatters="It reduces the noise of live sky alerts so visitors can spend time on the strongest follow-up opportunities instead of the full firehose."
+            />
             <article className="panel">
               <p className="eyebrow">Why this module works</p>
               <h3>High-signal, low-friction value</h3>
@@ -619,6 +774,13 @@ export default function App() {
 
       {route.page === "report" ? (
         <main className="single-column">
+          <GuideCard
+            eyebrow="How to use this report"
+            title="Read the big picture before the candidate list"
+            howToUse="Use the report as your first stop when you want a compact summary of the latest run, then return to the feed for individual alerts that deserve more attention."
+            whatItDoes="This page turns the newest transient ingest and scoring cycle into a plain-language narrative with the run date, model context, and summary text."
+            whyItMatters="It helps visitors understand what changed overnight without needing to interpret the raw scoring output on their own."
+          />
           <ReportView report={report} loading={loadingReport} error={reportError} />
         </main>
       ) : null}
@@ -631,13 +793,26 @@ export default function App() {
 
       {route.page === "tess" ? (
         <main className="single-column">
+          <GuideCard
+            eyebrow="How to use this module"
+            title="Look for unusual long-term behavior"
+            howToUse="Browse the highest anomaly scores first, then compare candidates to learn which objects look meaningfully different from more ordinary variability."
+            whatItDoes="The TESS pipeline scores light curves for unusual structure and surfaces the most atypical candidates for review."
+            whyItMatters="This creates a slower, discovery-oriented path through the sky that complements the faster transient feed."
+          />
           <TessView candidates={tessCandidates} loading={loadingTess} error={tessError} />
         </main>
       ) : null}
 
       {route.page === "sky-feed" ? <SkyFeedPage /> : null}
 
+      {route.page === "papers" ? <PapersPage /> : null}
+
       {route.page === "galaxy-map" ? <GalaxyMap /> : null}
+
+      {route.page === "galaxy-map-about" ? <LabsGalaxyMapAboutPage /> : null}
+
+      {route.page === "galaxy-map-data" ? <LabsGalaxyMapDataPage /> : null}
     </div>
   );
 }

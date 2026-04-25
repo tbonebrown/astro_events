@@ -73,6 +73,85 @@ beforeEach(() => {
               }
             ];
           }
+          if (String(path).includes("/api/galaxy-map/manifest")) {
+            return {
+              title: "Galaxy Embedding Map",
+              subtitle: "Explore the early universe through AI-assisted visual similarity maps.",
+              total_galaxies: 12000,
+              data_mode: "synthetic",
+              ranges: {
+                redshift_min: 0.1,
+                redshift_max: 8.8,
+                magnitude_min: 23.5,
+                magnitude_max: 29.4
+              },
+              instruments: ["NIRCam"],
+              filter_bands: ["F200W", "F277W"],
+              morphologies: ["Grand design spiral", "Peculiar merger remnant"],
+              source_fields: ["CEERS", "JADES"],
+              clusters: [
+                {
+                  cluster_id: 0,
+                  cluster_name: "Grand Design Spirals",
+                  plain_cluster_name: "Spiral cities",
+                  count: 1200,
+                  centroid_x: 0.4,
+                  centroid_y: 0.1,
+                  extent_x: 1.8,
+                  extent_y: 1.5,
+                  avg_rarity: 0.2,
+                  dominant_class: "Grand design spiral",
+                  summary: "Dense spiral family.",
+                  plain_summary: "Classic spiral galaxies.",
+                  redshift_min: 0.4,
+                  redshift_max: 2.2,
+                  representatives: [
+                    {
+                      image_id: "galaxy-1",
+                      cluster_id: 0,
+                      cluster_name: "Grand Design Spirals",
+                      plain_cluster_name: "Spiral cities",
+                      predicted_class: "Grand design spiral",
+                      scientific_label: "Grand design spiral",
+                      simple_label: "Large spiral galaxy",
+                      x: 0.1,
+                      y: 0.2,
+                      confidence: 0.92,
+                      redshift: 0.05,
+                      magnitude: 24.3,
+                      image_url: "data:image/svg+xml;base64,PHN2Zy8+"
+                    }
+                  ]
+                }
+              ],
+              story_steps: [
+                {
+                  id: "embeddings",
+                  title: "What the map shows",
+                  body: "Nearby points share similar visual structure."
+                }
+              ],
+              methodology: [
+                {
+                  title: "Embed",
+                  detail: "Synthetic embeddings for test coverage."
+                }
+              ],
+              data_sources: [
+                {
+                  label: "Mock sample",
+                  detail: "Synthetic sample."
+                }
+              ],
+              artifacts: [
+                {
+                  name: "galaxies.parquet",
+                  path: "/tmp/galaxies.parquet",
+                  description: "Synthetic artifact."
+                }
+              ]
+            };
+          }
           if (String(path).includes("/api/galaxies")) {
             return {
               total: 12000,
@@ -94,10 +173,19 @@ beforeEach(() => {
                   z: 0.1,
                   cluster_id: 0,
                   cluster_name: "Grand Design Spirals",
+                  plain_cluster_name: "Spiral cities",
                   predicted_class: "Grand design spiral",
+                  scientific_label: "Grand design spiral",
+                  simple_label: "Large spiral galaxy",
                   morphology: "Grand design spiral",
                   confidence: 0.92,
                   rarity_score: 0.12,
+                  redshift: 0.05,
+                  magnitude: 24.3,
+                  source_field: "CEERS",
+                  instrument: "NIRCam",
+                  filter_band: "F200W",
+                  thumbnail_url: null,
                   is_outlier: false
                 },
                 {
@@ -107,31 +195,23 @@ beforeEach(() => {
                   z: 0.4,
                   cluster_id: -1,
                   cluster_name: "Rare Objects",
+                  plain_cluster_name: "Rare shapes",
                   predicted_class: "Peculiar merger remnant",
+                  scientific_label: "Peculiar merger remnant",
+                  simple_label: "Rare galaxy",
                   morphology: "Peculiar merger remnant",
                   confidence: 0.67,
                   rarity_score: 0.91,
+                  redshift: 4.25,
+                  magnitude: 28.6,
+                  source_field: "JADES",
+                  instrument: "NIRCam",
+                  filter_band: "F277W",
+                  thumbnail_url: null,
                   is_outlier: true
                 }
               ]
             };
-          }
-          if (String(path).includes("/api/clusters")) {
-            return [
-              {
-                cluster_id: 0,
-                cluster_name: "Grand Design Spirals",
-                count: 1200,
-                centroid_x: 0.4,
-                centroid_y: 0.1,
-                extent_x: 1.8,
-                extent_y: 1.5,
-                avg_rarity: 0.2,
-                dominant_class: "Grand design spiral",
-                summary: "Dense spiral family.",
-                representatives: []
-              }
-            ];
           }
           if (String(path).includes("/api/galaxy/")) {
             return {
@@ -139,7 +219,10 @@ beforeEach(() => {
               image_url: "data:image/svg+xml;base64,PHN2Zy8+",
               cluster_id: 0,
               cluster_name: "Grand Design Spirals",
+              plain_cluster_name: "Spiral cities",
               predicted_class: "Grand design spiral",
+              scientific_label: "Grand design spiral",
+              simple_label: "Large spiral galaxy",
               morphology: "Grand design spiral",
               confidence: 0.92,
               rarity_score: 0.12,
@@ -147,15 +230,26 @@ beforeEach(() => {
               metadata: {
                 catalog: "galaxy-zoo",
                 survey: "SDSS",
+                observation_source: "Synthetic sample",
+                observation_program: "CEERS pilot",
+                source_field: "CEERS",
+                instrument: "NIRCam",
+                filter_band: "F200W",
                 redshift: 0.05,
+                magnitude: 24.3,
+                brightness_score: 0.72,
+                lookback_time_gyr: 0.7,
                 stellar_mass_log10: 10.2,
                 star_formation_rate: 2.8,
                 surface_brightness: 21.4,
-                feature_tags: ["spiral arms", "disk"]
+                feature_tags: ["spiral arms", "disk"],
+                morphology_tags: ["spiral arms", "disk"],
+                data_mode: "synthetic"
               },
               cluster_summary: {
                 cluster_id: 0,
                 cluster_name: "Grand Design Spirals",
+                plain_cluster_name: "Spiral cities",
                 count: 1200,
                 dominant_class: "Grand design spiral",
                 avg_rarity: 0.2,
@@ -163,7 +257,10 @@ beforeEach(() => {
                 centroid_y: 0.1,
                 extent_x: 1.8,
                 extent_y: 1.5,
-                summary: "Dense spiral family."
+                summary: "Dense spiral family.",
+                plain_summary: "Classic spiral galaxies.",
+                redshift_min: 0.4,
+                redshift_max: 2.2
               },
               nearest_neighbors: []
             };
@@ -283,11 +380,11 @@ test("renders the application shell", () => {
 });
 
 test("renders the galaxy map route", async () => {
-  window.history.replaceState({}, "", "/galaxy-map");
+  window.history.replaceState({}, "", "/labs/galaxy-map");
   render(<App />);
 
-  expect(await screen.findByRole("heading", { name: /Google Maps for morphology space/i })).toBeInTheDocument();
-  expect(screen.getByText(/Galaxies loaded/i)).toBeInTheDocument();
+  expect((await screen.findAllByRole("heading", { name: /Galaxy Embedding Map/i })).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/Explore the Map/i).length).toBeGreaterThan(0);
 });
 
 test("renders the celestial events route", async () => {
@@ -297,4 +394,17 @@ test("renders the celestial events route", async () => {
   expect(await screen.findByRole("heading", { name: /Upcoming sky moments/i })).toBeInTheDocument();
   expect(screen.getAllByText(/Eta Aquariids meteor shower/i).length).toBeGreaterThan(0);
   expect(await screen.findByText(/This shower comes from Halley's debris stream/i)).toBeInTheDocument();
+});
+
+test("renders the recent papers route", async () => {
+  window.history.replaceState({}, "", "/papers");
+  render(<App />);
+
+  expect(
+    await screen.findByRole("heading", { name: /Top 10 interesting astronomy papers this week/i }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /arXiv 2604\.21848/i })).toHaveAttribute(
+    "href",
+    "https://arxiv.org/abs/2604.21848",
+  );
 });

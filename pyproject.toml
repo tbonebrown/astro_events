@@ -47,10 +47,11 @@ astro-transients-nightly = "astro_transients.cli:main"
 astro-api-ingest = "astro_api.cli.ingest:main"
 astro-api-ingest-transients = "astro_api.cli.ingest_transients:main"
 astro-api-refresh-events = "astro_api.cli.refresh_events:main"
+astro-jwst-galaxy-map = "astro_jwst.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["services/api", "pipelines/tess", "pipelines/transients"]
-include = ["astro_api*", "astro_tess*", "astro_transients*"]
+where = ["services/api", "pipelines/tess", "pipelines/transients", "pipelines/jwst"]
+include = ["astro_api*", "astro_tess*", "astro_transients*", "astro_jwst*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

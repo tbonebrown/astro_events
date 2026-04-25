@@ -33,6 +33,7 @@ from astro_api.schemas import (
     GalaxyDetailResponse,
     GalaxyExplanationResponse,
     GalaxyListResponse,
+    GalaxyManifestResponse,
     HealthResponse,
     NightlyReportResponse,
     NightlyRunResponse,
@@ -206,13 +207,22 @@ def create_app(
 
     @app.get("/api/galaxies", response_model=GalaxyListResponse)
     def galaxy_list(
-        limit: int = 5_000,
+        limit: int = 12_000,
         offset: int = 0,
         min_x: float | None = None,
         max_x: float | None = None,
         min_y: float | None = None,
         max_y: float | None = None,
         cluster_id: int | None = None,
+        redshift_min: float | None = None,
+        redshift_max: float | None = None,
+        magnitude_min: float | None = None,
+        magnitude_max: float | None = None,
+        morphology: str | None = None,
+        instrument: str | None = None,
+        filter_band: str | None = None,
+        source_field: str | None = None,
+        search: str | None = None,
     ) -> GalaxyListResponse:
         payload = galaxy_map_service.list_points(
             limit=max(1, min(limit, 20_000)),
@@ -222,8 +232,21 @@ def create_app(
             min_y=min_y,
             max_y=max_y,
             cluster_id=cluster_id,
+            redshift_min=redshift_min,
+            redshift_max=redshift_max,
+            magnitude_min=magnitude_min,
+            magnitude_max=magnitude_max,
+            morphology=morphology,
+            instrument=instrument,
+            filter_band=filter_band,
+            source_field=source_field,
+            search=search,
         )
         return GalaxyListResponse.model_validate(payload)
+
+    @app.get("/api/galaxy-map/manifest", response_model=GalaxyManifestResponse)
+    def galaxy_manifest() -> GalaxyManifestResponse:
+        return GalaxyManifestResponse.model_validate(galaxy_map_service.manifest())
 
     @app.get("/api/galaxy/{image_id}", response_model=GalaxyDetailResponse)
     def galaxy_detail(image_id: str) -> GalaxyDetailResponse:

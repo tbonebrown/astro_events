@@ -42,6 +42,10 @@ export function fetchGalaxyMap(params = {}) {
   return request(`/api/galaxies${toQueryString(params)}`);
 }
 
+export function fetchGalaxyMapManifest() {
+  return request("/api/galaxy-map/manifest");
+}
+
 export function fetchGalaxyDetail(imageId) {
   return request(`/api/galaxy/${imageId}`);
 }
