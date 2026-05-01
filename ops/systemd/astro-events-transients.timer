@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Astro Event Intelligence nightly transient ingest
+Description=Run Astro Event Intelligence nightly transient refresh
 
 [Timer]
 OnCalendar=*-*-* 03:20:00

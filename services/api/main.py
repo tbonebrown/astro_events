@@ -42,6 +42,7 @@ from astro_api.schemas import (
     TransientCandidateSummaryResponse,
     TransientReportResponse,
 )
+from astro_api.exoplanet.api import create_exoplanet_router
 
 
 def _request_host(request: Request) -> str:
@@ -99,6 +100,7 @@ def create_app(
 
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.mount("/artifacts", StaticFiles(directory=artifacts_dir), name="artifacts")
+    app.include_router(create_exoplanet_router(settings))
 
     secure_hosts = set(settings.public_hosts)
 

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "../App";
 
@@ -354,6 +354,22 @@ beforeEach(() => {
               why_interesting: "A strong annual shower."
             };
           }
+          if (String(path).includes("/api/exoplanet/demo-targets")) {
+            return [
+              {
+                target_id: "kepler-10",
+                name: "Kepler-10",
+                aliases: ["KIC 11904151"],
+                mission: "Kepler",
+                description: "Compact Kepler system.",
+                ra: 285.679421,
+                dec: 50.241305,
+                known_period_days: 0.837491,
+                known_planet: "Kepler-10 b",
+                expected_depth_ppm: 152
+              }
+            ];
+          }
           return {};
         },
         text: async () => ""
@@ -363,6 +379,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
 });
 
@@ -407,4 +424,13 @@ test("renders the recent papers route", async () => {
     "href",
     "https://arxiv.org/abs/2604.21848",
   );
+});
+
+test("renders the exoplanet hunter route", async () => {
+  window.history.replaceState({}, "", "/apps/exoplanet-hunter");
+  render(<App />);
+
+  expect((await screen.findAllByRole("heading", { name: /Exoplanet Hunter/i })).length).toBeGreaterThan(0);
+  expect(screen.getByRole("button", { name: /Run analysis/i })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: /Kepler-10/i })).toBeInTheDocument();
 });

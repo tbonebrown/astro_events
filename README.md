@@ -18,6 +18,7 @@ Public routes:
 - `/labs/galaxy-map`
 - `/labs/galaxy-map/about`
 - `/labs/galaxy-map/data`
+- `/apps/exoplanet-hunter`
 
 The app is designed to feel native to Ohnita instead of like a separate science microsite. It reuses the current visual language:
 
@@ -252,3 +253,59 @@ The repo still includes the original public Ohnita experiences:
 - sky-feed / celestial events guide
 
 The Galaxy Embedding Map now sits alongside them as the flagship Labs showcase.
+
+## Exoplanet Hunter
+
+`/apps/exoplanet-hunter` is a premium science dashboard for transit-search demos against TESS and Kepler light curves.
+
+Core flow:
+
+1. Pick a demo target such as Kepler-10, HAT-P-7, WASP-12, TOI-700, Kepler-186, or Kepler-22.
+2. The FastAPI backend resolves the target and retrieves a cached light curve or asks `lightkurve` to download from MAST.
+3. The pipeline normalizes, removes NaNs/outliers, detrends the signal, runs Astropy Box Least Squares, folds the best period, checks known-object fallbacks plus NASA Exoplanet Archive when reachable, and builds an AI-assisted report.
+4. The UI shows raw flux, cleaned flux, BLS periodogram, phase-folded transit, candidate metrics, archive match, classifier result, and export controls.
+
+Install the astronomy extras for real archive access:
+
+```bash
+python3 -m pip install -e ".[dev,exoplanet]"
+```
+
+Optional GPU classifier support uses PyTorch from the existing `ml` extra:
+
+```bash
+python3 -m pip install -e ".[ml]"
+```
+
+Useful environment variables:
+
+- `EXOPLANET_CACHE_DIR`: filesystem cache for light curves, result JSON, and SQLite metadata.
+- `LLM_BASE_URL`: OpenAI-compatible llama.cpp base URL, for example `http://127.0.0.1:8080/v1`.
+- `LLM_MODEL`: local model name.
+- `USE_GPU_CLASSIFIER`: enables the PyTorch inference path when available.
+- `GPU_DEVICE`: preferred CUDA device, for example `cuda:0`.
+- `ROCM_DEVICE`: preferred ROCm/HIP device hint, for example `hip:0`.
+- `MAX_WORKERS`: background analysis worker count.
+- `NASA_ARCHIVE_TIMEOUT`: timeout for archive lookup.
+- `ENABLE_BATCH_SCAN`: enables `/api/exoplanet/batch-scan`.
+
+Docker builds install the `exoplanet` extra by default. The compose service exposes only the FastAPI port on localhost and is intended to remain behind the existing Cloudflare Tunnel or reverse proxy.
+
+CUDA notes:
+
+- Install a CUDA-compatible PyTorch build on the host or in a custom image.
+- Use `USE_GPU_CLASSIFIER=true` and `GPU_DEVICE=cuda:0`.
+- BLS remains CPU-based because Astropy's implementation is scientifically standard and reliable; GPU use is concentrated in candidate classification and the local LLM endpoint.
+
+ROCm notes:
+
+- Install a ROCm PyTorch build where available.
+- PyTorch commonly exposes ROCm devices through CUDA-style device strings internally; `ROCM_DEVICE=hip:0` is accepted as a hint and mapped when possible.
+
+Scientific limitations:
+
+- The app identifies possible transit signals and known-object matches. It does not confirm or announce discoveries.
+- Reports intentionally use language such as "possible transit signal", "candidate", "matches known object", and "requires follow-up validation".
+- Validation still requires checks such as centroid motion, odd-even depths, contamination, multi-sector consistency, stellar characterization, and independent follow-up.
+
+Add a demo target by editing `DEMO_TARGETS` in [targets.py](/Users/babo/Documents/GitHub/astro_events/services/api/astro_api/exoplanet/services/targets.py) with aliases, mission, known period, and expected depth.

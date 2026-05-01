@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import timezone
 from pathlib import Path
 import json
+import shutil
 
 import pandas as pd
 
@@ -29,6 +30,9 @@ def export_run(result: PipelineRunResult, export_root: Path) -> Path:
 
     latest_path = export_root / "transients" / "latest"
     if latest_path.exists() or latest_path.is_symlink():
-        latest_path.unlink()
+        if latest_path.is_dir() and not latest_path.is_symlink():
+            shutil.rmtree(latest_path)
+        else:
+            latest_path.unlink()
     latest_path.symlink_to(export_dir.resolve(), target_is_directory=True)
     return export_dir

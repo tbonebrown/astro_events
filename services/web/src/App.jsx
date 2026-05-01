@@ -9,6 +9,7 @@ import {
 import GalaxyMap from "./components/GalaxyMap";
 import LabsGalaxyMapAboutPage from "./pages/LabsGalaxyMapAboutPage";
 import LabsGalaxyMapDataPage from "./pages/LabsGalaxyMapDataPage";
+import ExoplanetHunterPage from "./pages/apps/exoplanet-hunter/ExoplanetHunterPage";
 import PapersPage from "./pages/PapersPage";
 import SkyFeedPage from "./pages/SkyFeedPage";
 
@@ -35,6 +36,9 @@ function readRoute() {
   }
   if (parts[0] === "labs" && parts[1] === "galaxy-map") {
     return { page: "galaxy-map" };
+  }
+  if (parts[0] === "apps" && parts[1] === "exoplanet-hunter") {
+    return { page: "exoplanet-hunter" };
   }
   if (parts[0] === "galaxy-map") {
     return { page: "galaxy-map" };
@@ -68,6 +72,9 @@ function routeTitle(route, selectedTransient) {
   }
   if (route.page === "tess") {
     return "TESS Module | Ohnita";
+  }
+  if (route.page === "exoplanet-hunter") {
+    return "Exoplanet Hunter | Ohnita";
   }
   if (route.page === "feed") {
     return "Transient Feed | Ohnita";
@@ -275,8 +282,8 @@ function HomeView({
         <div className="snapshot-grid" aria-label="Project snapshot">
           <article className="snapshot-card">
             <span>Projects on site</span>
-            <strong>5</strong>
-            <p>Five ways to learn, compare, and follow what the sky is doing.</p>
+            <strong>7</strong>
+            <p>Seven ways to learn, compare, and follow what the sky is doing.</p>
           </article>
           <article className="snapshot-card">
             <span>Transient watchlist</span>
@@ -352,6 +359,18 @@ function HomeView({
             ]}
             cta="Open the TESS module"
             onOpen={() => onOpenRoute("/tess")}
+          />
+          <ProjectCard
+            eyebrow="Transit search"
+            title="Exoplanet Hunter"
+            description="A polished transit-search dashboard for real TESS and Kepler light curves, with BLS detection, archive checks, GPU-capable classification, and careful AI reports."
+            highlights={[
+              "Search by TIC, KIC, target name, or coordinates",
+              "Interactive raw, cleaned, periodogram, and folded transit plots",
+              "Candidate language with known-object lookup and exportable reports"
+            ]}
+            cta="Launch Exoplanet Hunter"
+            onOpen={() => onOpenRoute("/apps/exoplanet-hunter")}
           />
           <ProjectCard
             eyebrow="Skywatching"
@@ -461,6 +480,15 @@ function HomeView({
             whyItMatters="Some of the most interesting discoveries are not sudden explosions. This view helps visitors learn from slower, subtler changes."
             cta="Open TESS module"
             onOpen={() => onOpenRoute("/tess")}
+          />
+          <GuideCard
+            eyebrow="Transit search"
+            title="Exoplanet Hunter"
+            howToUse="Pick a demo target such as Kepler-10, run the analysis, then compare the raw curve, cleaned signal, BLS peak, folded transit, candidate table, and report."
+            whatItDoes="The app downloads or retrieves cached NASA light curves, cleans the flux, runs Box Least Squares, folds the signal, checks known-object catalogs, and explains the numerical result."
+            whyItMatters="It gives visitors a hands-on way to understand how transit searches work while keeping the language careful about candidates and validation."
+            cta="Launch Exoplanet Hunter"
+            onOpen={() => onOpenRoute("/apps/exoplanet-hunter")}
           />
           <GuideCard
             eyebrow="Step outside"
@@ -708,6 +736,7 @@ export default function App() {
           <button onClick={() => setRoute("/papers")}>Recent papers</button>
           <button onClick={() => setRoute("/transients/reports/latest")}>Nightly report</button>
           <button onClick={() => setRoute("/tess")}>TESS module</button>
+          <button onClick={() => setRoute("/apps/exoplanet-hunter")}>Exoplanet Hunter</button>
           <button onClick={() => setRoute("/labs/galaxy-map")}>Galaxy map</button>
         </nav>
       </header>
@@ -803,6 +832,8 @@ export default function App() {
           <TessView candidates={tessCandidates} loading={loadingTess} error={tessError} />
         </main>
       ) : null}
+
+      {route.page === "exoplanet-hunter" ? <ExoplanetHunterPage /> : null}
 
       {route.page === "sky-feed" ? <SkyFeedPage /> : null}
 

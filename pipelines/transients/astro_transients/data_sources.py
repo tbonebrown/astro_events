@@ -6,6 +6,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin
 import csv
 import io
+import json
 import re
 
 import httpx
@@ -146,6 +147,62 @@ def _parse_html_table(text: str, base_url: str) -> list[GaiaAlert]:
     return [alert for alert in alerts if alert is not None]
 
 
+def _normalize_embedded_alert(payload: dict, base_url: str) -> GaiaAlert | None:
+    name = str(payload.get("name") or "").strip()
+    if not name:
+        return None
+
+    ra = _safe_float(payload.get("ra"))
+    dec = _safe_float(payload.get("dec"))
+    magnitude = _safe_float(payload.get("alertMag"))
+    if ra is None or dec is None or magnitude is None:
+        return None
+
+    per_alert = payload.get("per_alert")
+    alert_path = per_alert.get("link") if isinstance(per_alert, dict) else ""
+    alert_url = urljoin(base_url, str(alert_path or f"/alerts/alert/{name}/"))
+    observed_at = str(payload.get("obstime") or "")
+    published_at = str(payload.get("published") or observed_at)
+    return GaiaAlert(
+        name=name,
+        external_alert_id=name,
+        observed_at=observed_at,
+        published_at=published_at,
+        ra=ra,
+        dec=dec,
+        magnitude=magnitude,
+        historic_magnitude=_safe_float(payload.get("historicMag")),
+        historic_scatter=_safe_float(payload.get("historicStdDev")),
+        classification=str(payload.get("classification") or ""),
+        comment=str(payload.get("comment") or ""),
+        tns_name=str(payload.get("tnsid") or ""),
+        source_id=str(payload.get("source_id") or ""),
+        alert_url=alert_url,
+        metadata={key: value for key, value in payload.items() if value not in ("", None)},
+    )
+
+
+def _parse_embedded_alerts(text: str, base_url: str) -> list[GaiaAlert]:
+    match = re.search(r"\bvar\s+alerts\s*=\s*(\[[\s\S]*?\]);", text)
+    if not match:
+        return []
+
+    try:
+        payload = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return []
+
+    if not isinstance(payload, list):
+        return []
+
+    alerts = [
+        _normalize_embedded_alert(item, base_url)
+        for item in payload
+        if isinstance(item, dict)
+    ]
+    return [alert for alert in alerts if alert is not None]
+
+
 @dataclass(slots=True)
 class SyntheticGaiaSource:
     seed: int = 29
@@ -207,7 +264,9 @@ class GaiaAlertsSource:
 
         content_type = response.headers.get("content-type", "")
         if "html" in content_type or text.lstrip().startswith("<"):
-            alerts = _parse_html_table(text, str(response.url))
+            alerts = _parse_embedded_alerts(text, str(response.url))
+            if not alerts:
+                alerts = _parse_html_table(text, str(response.url))
             if not alerts:
                 csv_links = re.findall(r'href=["\']([^"\']+\.csv)["\']', text, flags=re.IGNORECASE)
                 for link in csv_links:

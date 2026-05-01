@@ -1,0 +1,2 @@
+"""Exoplanet Hunter feature package."""
+

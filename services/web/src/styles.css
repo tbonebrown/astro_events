@@ -1557,6 +1557,310 @@ a {
   margin-top: 4px;
 }
 
+.exoplanet-page {
+  gap: 20px;
+}
+
+.exoplanet-hero {
+  display: grid;
+  gap: 24px;
+  min-height: 58vh;
+  align-items: end;
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(4, 11, 20, 0.46), rgba(4, 11, 20, 0.88)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 720'%3E%3Crect width='1200' height='720' fill='%23020a13'/%3E%3Cg fill='%23ffffff' opacity='.9'%3E%3Ccircle cx='82' cy='80' r='1.2'/%3E%3Ccircle cx='180' cy='210' r='1.4'/%3E%3Ccircle cx='330' cy='112' r='1'/%3E%3Ccircle cx='468' cy='260' r='1.7'/%3E%3Ccircle cx='610' cy='92' r='1.1'/%3E%3Ccircle cx='760' cy='188' r='1.3'/%3E%3Ccircle cx='910' cy='120' r='1.7'/%3E%3Ccircle cx='1068' cy='230' r='1'/%3E%3Ccircle cx='1140' cy='70' r='1.5'/%3E%3Ccircle cx='130' cy='520' r='1'/%3E%3Ccircle cx='276' cy='638' r='1.4'/%3E%3Ccircle cx='520' cy='546' r='1.3'/%3E%3Ccircle cx='706' cy='622' r='1.1'/%3E%3Ccircle cx='968' cy='532' r='1.3'/%3E%3C/g%3E%3Cpath d='M0 486c130-52 232-42 348-4 122 39 243 70 410-2 149-64 275-70 442-15v255H0z' fill='%2308182b'/%3E%3Cpath d='M0 512c164-37 296-24 430 32 114 48 236 40 360-20 143-69 280-71 410-18v214H0z' fill='%23051222'/%3E%3Cpath d='M144 386c96-58 234-86 366-72 164 17 269 82 408 78 92-2 166-30 238-70' fill='none' stroke='%238bddff' stroke-opacity='.22' stroke-width='2'/%3E%3Ccircle cx='794' cy='346' r='74' fill='none' stroke='%23e9ff7a' stroke-opacity='.24' stroke-width='3'/%3E%3Ccircle cx='770' cy='328' r='11' fill='%23ff8f6b' opacity='.68'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+}
+
+.exoplanet-hero__copy {
+  display: grid;
+  gap: 14px;
+}
+
+.exoplanet-hero__copy h2 {
+  margin: 0;
+  max-width: 11ch;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 5.8rem);
+  line-height: 0.94;
+}
+
+.exoplanet-hero__copy p {
+  max-width: 74ch;
+  margin: 0;
+  color: #d4e7f4;
+  font-size: 1.05rem;
+}
+
+.exoplanet-stat-grid,
+.exoplanet-control-grid,
+.exoplanet-viz-grid,
+.exoplanet-report-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.exoplanet-stat-grid article {
+  min-height: 118px;
+  display: grid;
+  align-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  padding: 18px;
+  background: rgba(2, 9, 17, 0.56);
+  backdrop-filter: blur(12px);
+}
+
+.exoplanet-stat-grid span,
+.exoplanet-search label span,
+.exoplanet-provenance dt,
+.exoplanet-table th {
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.exoplanet-stat-grid strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 4vw, 1.6rem);
+  overflow-wrap: anywhere;
+}
+
+.exoplanet-demo-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(180px, 230px);
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.exoplanet-demo-card {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  text-align: left;
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(0, 0, 0, 0.14));
+}
+
+.exoplanet-demo-card.is-active {
+  border-color: rgba(233, 255, 122, 0.45);
+  box-shadow: 0 0 0 1px rgba(233, 255, 122, 0.18);
+}
+
+.exoplanet-demo-card span,
+.exoplanet-demo-card small {
+  color: var(--muted);
+}
+
+.exoplanet-demo-card strong {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.exoplanet-search,
+.exoplanet-timeline,
+.exoplanet-chart,
+.exoplanet-report,
+.exoplanet-ops,
+.exoplanet-table-panel {
+  overflow: hidden;
+}
+
+.exoplanet-run-button:disabled,
+.exoplanet-export-row button:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.exoplanet-search__grid {
+  display: grid;
+  gap: 12px;
+}
+
+.exoplanet-search label {
+  display: grid;
+  gap: 8px;
+}
+
+.exoplanet-search input,
+.exoplanet-search select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  padding: 12px 14px;
+}
+
+.exoplanet-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.exoplanet-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9fffb2, #8bddff, #ff8f6b);
+  transition: width 180ms ease;
+}
+
+.exoplanet-steps {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.exoplanet-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.exoplanet-steps li span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.exoplanet-steps li.is-running span {
+  background: #8bddff;
+  box-shadow: 0 0 18px rgba(139, 221, 255, 0.7);
+}
+
+.exoplanet-steps li.is-complete {
+  color: var(--text);
+}
+
+.exoplanet-steps li.is-complete span {
+  background: var(--accent);
+}
+
+.exoplanet-steps li.is-failed {
+  color: #ffc7b5;
+}
+
+.exoplanet-chart__head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.exoplanet-chart h3 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.exoplanet-plot {
+  min-height: 360px;
+}
+
+.exoplanet-table-wrap {
+  overflow-x: auto;
+}
+
+.exoplanet-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+}
+
+.exoplanet-table th,
+.exoplanet-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.exoplanet-table td {
+  color: #e4f2fb;
+}
+
+.exoplanet-table td strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.exoplanet-confidence {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--accent);
+  background: rgba(159, 255, 178, 0.12);
+}
+
+.exoplanet-report__sections {
+  display: grid;
+  gap: 16px;
+}
+
+.exoplanet-report__sections section {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.exoplanet-report__sections h3,
+.exoplanet-ops h2 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.exoplanet-report__sections p,
+.exoplanet-safety,
+.exoplanet-ops p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.exoplanet-safety {
+  margin-bottom: 18px;
+  color: #ffd6c7;
+}
+
+.exoplanet-export-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.exoplanet-provenance {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.exoplanet-provenance div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.exoplanet-provenance dd {
+  margin: 0;
+  text-align: right;
+}
+
 @media (min-width: 900px) {
   .hero {
     grid-template-columns: 1.4fr 0.8fr;
@@ -1647,6 +1951,28 @@ a {
     grid-template-columns: 220px minmax(0, 1fr);
     align-items: stretch;
   }
+
+  .exoplanet-hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.84fr);
+  }
+
+  .exoplanet-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .exoplanet-control-grid,
+  .exoplanet-report-layout {
+    grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.78fr);
+    align-items: start;
+  }
+
+  .exoplanet-search__grid {
+    grid-template-columns: minmax(260px, 1.5fr) repeat(3, minmax(130px, 0.7fr));
+  }
+
+  .exoplanet-viz-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 899px) {
@@ -1679,5 +2005,17 @@ a {
 
   .sky-card {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .exoplanet-hero {
+    min-height: 54vh;
+  }
+
+  .exoplanet-search .panel-heading {
+    display: grid;
+  }
+
+  .exoplanet-plot {
+    min-height: 300px;
   }
 }

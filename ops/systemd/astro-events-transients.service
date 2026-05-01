@@ -1,9 +1,9 @@
 [Unit]
-Description=Astro Event Intelligence nightly transient ingest
+Description=Astro Event Intelligence nightly transient refresh
 After=network.target astro-events-api.service
 
 [Service]
 Type=oneshot
 WorkingDirectory=/srv/astro_events
 EnvironmentFile=/srv/astro_events/.env
-ExecStart=/srv/astro_events/scripts/nightly_ingest_transients.sh
+ExecStart=/srv/astro_events/scripts/nightly_transients_refresh.sh

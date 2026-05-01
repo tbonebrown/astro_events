@@ -7,3 +7,4 @@ Type=oneshot
 WorkingDirectory=/srv/astro_events
 EnvironmentFile=/srv/astro_events/.env
 ExecStart=/srv/astro_events/scripts/generate_tess_targets.sh
+TimeoutStartSec=15min
